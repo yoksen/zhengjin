@@ -52,13 +52,8 @@ class iCIFAR100(iData):
     class_order = np.arange(100).tolist()
 
     def download_data(self):
-        # train_dataset = datasets.cifar.CIFAR100('/GPUFS/sysu_rxwang_1/data/cifar-100-python', train=True, download=True)
-        # test_dataset = datasets.cifar.CIFAR100('/GPUFS/sysu_rxwang_1/data/cifar-100-python', train=False, download=True)
-
-
-        train_dataset = datasets.cifar.CIFAR100('/home/20/zhengjin/Datasets/cifar100/', train=True, download=False)
-        test_dataset = datasets.cifar.CIFAR100('/home/20/zhengjin/Datasets/cifar100/', train=False, download=False)
-        # test_dataset = datasets.cifar.CIFAR100('/home/20/zhengjin/Datasets/cifar100/', train=True, download=False)
+        train_dataset = datasets.cifar.CIFAR100(os.environ["CIFARDATASET"], train=True, download=True)
+        test_dataset = datasets.cifar.CIFAR100(os.environ["CIFARDATASET"], train=False, download=True)
 
         self.train_data, self.train_targets = train_dataset.data, np.array(train_dataset.targets)
         self.test_data, self.test_targets = test_dataset.data, np.array(test_dataset.targets)
@@ -83,10 +78,8 @@ class iImageNet1000(iData):
     class_order = np.arange(1000).tolist()
 
     def download_data(self):
-        train_dir = '/data15/Public/Datasets/ilsvrc2012/train/'
-        test_dir = '/data15/Public/Datasets/ilsvrc2012/val/'
-        # train_dir = '/GPUFS/sysu_rxwang_1/data/ilsvrc2012/train/'
-        # test_dir = '/GPUFS/sysu_rxwang_1/data/ilsvrc2012/val/'
+        train_dir = os.path.join(os.environ["IMAGENETDATASET"], "train")
+        test_dir = os.path.join(os.environ["IMAGENETDATASET"], "val")
         
         train_dset = datasets.ImageFolder(train_dir)
         test_dset = datasets.ImageFolder(test_dir)
@@ -144,9 +137,9 @@ class iTinyImageNet200(iData):
     class_order = np.arange(200).tolist()
 
     def download_data(self):
-        self.root_dir = "/data16/Public/Datasets/tiny-imagenet-200"
-        self.train_dir = '/data16/Public/Datasets/tiny-imagenet-200/train'
-        self.val_dir = '/data16/Public/Datasets/tiny-imagenet-200/val'
+        self.root_dir = os.path.join(os.environ["PUBLICDATASETS"], "tiny-imagenet-200")
+        self.train_dir = os.path.join(self.root_dir, "train")
+        self.val_dir = os.path.join(self.root_dir, "val")
 
         self._create_class_idx_dict_train()
         self._create_class_idx_dict_val()
