@@ -160,7 +160,6 @@ class twobn_cl_inverse(BaseLearner):
         self._update_representation_adv(train_loader, test_loader, optimizer, scheduler)
 
     def _update_representation_adv(self, train_loader, test_loader, optimizer, scheduler):
-
         if self._cur_task == 0:
             epochs_num = epochs_init
         else:

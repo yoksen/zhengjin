@@ -31,7 +31,7 @@ EPSILON = 1e-8
 
 
 # CIFAR100, ResNet32
-epochs_init = 250
+epochs_init = 2
 lrate_init = 1.0
 milestones_init = [100 , 150 , 200]
 lrate_decay_init = 0.1
@@ -348,8 +348,9 @@ class icarl_regularization(BaseLearner):
                 else inverse_images_
             self._targets_memory = np.concatenate((self._targets_memory, inverse_targets)) if \
                 len(self._targets_memory) != 0 else inverse_targets
-
+        
         self._class_means = _class_means
+        logging.info('Finishing constructing inverse exemplars for known classes. The number of exemplars is {}'.format(self._data_memory.shape[0]))
 
     def _get_train_inverse_data(self, data_manager):
         logging.info('Constructing inverse exemplars for new classes.')
@@ -372,15 +373,20 @@ class icarl_regularization(BaseLearner):
 
         self._data_train_inverse = inverse_images_
         self._targets_train_inverse = inverse_targets_
+        logging.info('Finishing constructing inverse exemplars for new classes. The number of exemplars is {}'.format(self._data_train_inverse.shape[0]))
 
     def _get_train_inverse_memory(self):
         if len(self._data_train_inverse) == 0:
             return None
         else:
             if len(self._data_memory) == 0:
+                logging.info('Return data for consistency regularization. The number of exemplars is {}'.format(self._data_train_inverse.shape[0]))
                 return (self._data_train_inverse, self._targets_train_inverse)
             else:
-                return (np.concatenate((self._data_train_inverse, self._data_memory), axis=0), np.concatenate((self._targets_train_inverse, self._targets_memory), axis=0))
+                data_train = np.concatenate((self._data_train_inverse, self._data_memory), axis=0)
+                targets_train = np.concatenate((self._targets_train_inverse, self._targets_memory), axis=0)
+                logging.info('Return data for consistency regularization. The number of exemplars is {}'.format(data_train.shape[0]))
+                return (data_train, targets_train)
 
     def rebuild_image_fv_bn(self,image, model, randstart=True):
         model.eval()
