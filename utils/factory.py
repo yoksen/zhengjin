@@ -14,6 +14,7 @@ from models.twobn_bic import twobn_bic
 from models.twobn_bic_inverse import twobn_bic_inverse
 from models.twobn_cl_inverse_v2 import twobn_cl_inverse_v2
 from models.twobn_cl_inverse_mixup import twobn_cl_inverse_mixup
+from models.icarl_consistency_regularization import icarl_regularization
 
 def get_model(model_name, args):
     name = model_name.lower()
@@ -39,7 +40,6 @@ def get_model(model_name, args):
         return twobn_cl_inverse(args)
     elif name == 'twobn_cl_inverse_v2':
         return twobn_cl_inverse_v2(args)
-
     elif name == 'twobn_eeil_inverse':
         return twobn_eeil_inverse(args)
     elif name == 'multibn_cl':
@@ -50,4 +50,6 @@ def get_model(model_name, args):
         return twobn_bic_inverse(args)
     elif name == 'twobn_cl_inverse_mixup':
         return twobn_cl_inverse_mixup(args)
+    elif name == 'icarl_regularization':
+        return icarl_regularization(args)
     

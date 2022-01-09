@@ -292,7 +292,9 @@ class CifarResNet(nn.Module):
         self.stage_1 = self._make_layer(block, 16, layer_blocks, 1)
         self.stage_2 = self._make_layer(block, 32, layer_blocks, 2)
         self.stage_3 = self._make_layer(block, 64, layer_blocks, 2)
-        self.avgpool = nn.AvgPool2d(8)
+        #change it
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        # self.avgpool = nn.AvgPool2d(8)
         self.out_dim = 64 * block.expansion
         # self.fc = nn.Linear(64*block.expansion, num_classes)
 

@@ -177,7 +177,7 @@ class twobn_cl_inverse(BaseLearner):
                 ori_targets = targets
 
                 # [2N,class_num]
-                ret_dict , targets = self._network( inputs , targets )  # here!
+                ret_dict , targets = self._network(inputs, targets)  # here!
 
                 # [2N,class_num]
                 logits = ret_dict['logits']
