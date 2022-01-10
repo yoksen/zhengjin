@@ -26,11 +26,11 @@ EPSILON = 1e-8
 # CIFAR100, ResNet32
 # epochs = 100
 
-epochs_init = 250
-lrate_init = 1.0
-milestones_init = [100 , 150 , 200]
-lrate_decay_init = 0.1
-weight_decay_init = 1e-4
+epochs_init = 70
+lrate_init = 2.0
+milestones_init = [49, 63]
+lrate_decay_init = 0.2
+weight_decay_init = 1e-5
 
 
 epochs = 70
