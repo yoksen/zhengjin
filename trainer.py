@@ -18,39 +18,11 @@ def train(args):
         args['device'] = device
         _train(args)
 
-
 def _train(args):
-    # nowTime = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-    # if args["pretrained"]:
-    #     log_dir = 'results/{}/input_size_{}/init_cls_{}/lambda_base_{}/'.format("pretrained", args["input_size"], args["init_cls"], args["lamda_base"])
-    # else:
-    #     log_dir = "results/{}/input_size_{}/init_cls_{}/lambda_base_{}/".format("unpretrained", args["input_size"], args["init_cls"], args["lamda_base"])
-    #
-    # if not os.path.exists(log_dir):
-    #     os.makedirs(log_dir)
-    #
-    # logfilename = log_dir + '{}_{}_{}_{}_{}'.format(args['model_name'], args['convnet_type'], args['dataset'],
-    #                                    args['increment'], nowTime)
-
-    log_dir = "./results/{}/base_{}/incre_{}/{}/".format(args['dataset'], args['init_cls'], args['increment'],args['model_name'])
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-
-    nowTime = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-    logfilename = log_dir+'{}_pretrained-{}_fixed_memory-{}_{}.log'.format(args['convnet_type'], args['pretrained'],args['fixed_memory'], nowTime)
-
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s [%(filename)s] => %(message)s',
-        handlers=[
-            logging.FileHandler(filename=logfilename + '.log'),
-            logging.StreamHandler(sys.stdout)
-        ]
-    )
-
+    _set_random()
     _set_device(args)
     print_args(args)
+
     data_manager = DataManager(args['dataset'], args['shuffle'], args['seed'], args['init_cls'], args['increment'])
     model = factory.get_model(args['model_name'], args)
 
@@ -105,3 +77,10 @@ def _set_device(args):
 def print_args(args):
     for key, value in args.items():
         logging.info('{}: {}'.format(key, value))
+    
+def _set_random():
+    torch.manual_seed(1)
+    torch.cuda.manual_seed(1)
+    torch.cuda.manual_seed_all(1)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False

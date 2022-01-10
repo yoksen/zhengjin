@@ -31,18 +31,18 @@ EPSILON = 1e-8
 
 
 # CIFAR100, ResNet32
-epochs_init = 250
+# CIFAR100, ResNet32
+epochs_init = 160
 lrate_init = 1.0
-milestones_init = [100 , 150 , 200]
+milestones_init = [100, 150, 200]
 lrate_decay_init = 0.1
 weight_decay_init = 1e-4
 
-
-epochs = 70
-lrate = 2.0
-milestones = [49, 63]
-lrate_decay = 0.2
-weight_decay = 1e-5  # illness
+epochs = 160
+lrate = 1.0
+milestones = [100 , 150 , 200]
+lrate_decay = 0.1
+weight_decay = 1e-4
 batch_size = 128
 num_workers = 4
 

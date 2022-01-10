@@ -26,7 +26,6 @@ EPSILON = 1e-8
 
 
 # CIFAR100, ResNet32
-# CIFAR100, ResNet32
 epochs_init = 250
 lrate_init = 1.0
 milestones_init = [100 , 150 , 200]
@@ -59,6 +58,15 @@ class twobn_cl(BaseLearner):
         self._old_network = self._network.copy().freeze()
         self._known_classes = self._total_classes
         logging.info('Exemplar size: {}'.format(self.exemplar_size))
+
+        if self._cur_task <= 1:
+            self.save_model()
+
+    def save_model(self):
+        if len(self._multiple_gpus) > 1:
+            torch.save(self._network.module.state_dict(), "./icarl_{}.pt".format(self._cur_task))
+        else:
+            torch.save(self._network.state_dict(), "./icarl_{}.pt".format(self._cur_task))
 
     def incremental_train(self, data_manager):
         self._cur_task += 1

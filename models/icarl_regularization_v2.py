@@ -44,7 +44,7 @@ lrate_decay = 0.1
 weight_decay = 1e-4
 batch_size = 128
 num_workers = 4
-duplex = False
+duplex = True
 
 iterations = 2000
 
@@ -90,7 +90,7 @@ def save_imgs(batch_img, task_id ,class_id):
 
     return save_path_list
 
-class icarl_regularization(BaseLearner):
+class icarl_regularization_v2(BaseLearner):
     def __init__(self, args):
         print('create icarl_regularization!!')
         super().__init__(args)
@@ -115,9 +115,9 @@ class icarl_regularization(BaseLearner):
 
     def save_model(self):
         if len(self._multiple_gpus) > 1:
-            torch.save(self._network.module.state_dict(), "./icarl_regularization_duplex_{}_{}.pt".format(duplex, self._cur_task))
+            torch.save(self._network.module.state_dict(), "./icarl_regularization_v2_duplex_{}_{}.pt".format(duplex, self._cur_task))
         else:
-            torch.save(self._network.state_dict(), "./icarl_regularization_duplex_{}_{}.pt".format(duplex, self._cur_task))
+            torch.save(self._network.state_dict(), "./icarl_regularization_v2_duplex_{}_{}.pt".format(duplex, self._cur_task))
 
     def incremental_train(self, data_manager):
         self._cur_task += 1
@@ -128,7 +128,7 @@ class icarl_regularization(BaseLearner):
 
         # Loader
         train_dataset = data_manager.get_dataset(np.arange(self._known_classes, self._total_classes), source='train',
-                                                 mode='train', appendent=self._get_memory())
+                                                 mode='train')
         self.train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
         test_dataset = data_manager.get_dataset(np.arange(0, self._total_classes), source='test', mode='test')
         self.test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)

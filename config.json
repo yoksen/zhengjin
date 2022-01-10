@@ -5,11 +5,11 @@
     "memory_per_class": 20,
     "fixed_memory": true,
     "shuffle": true,
-    "init_cls": 5,
-    "increment": 5,
-    "model_name": "icarl_regularization",
+    "init_cls": 50,
+    "increment": 50,
+    "model_name": "icarl_regularization_v2",
     "convnet_type": "resnet32_2bn",
     "device": ["0"],
-    "seed": [32,40,50,60,100],
+    "seed": [32, 40, 50, 60, 100],
     "pretrained":false
 }
