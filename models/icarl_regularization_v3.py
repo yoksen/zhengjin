@@ -31,13 +31,13 @@ EPSILON = 1e-8
 
 
 # CIFAR100, ResNet32
-epochs_init = 2
+epochs_init = 160
 lrate_init = 1.0
 milestones_init = [100, 150, 200]
 lrate_decay_init = 0.1
 weight_decay_init = 1e-4
 
-epochs = 2
+epochs = 160
 lrate = 1.0
 milestones = [100 , 150 , 200]
 lrate_decay = 0.1
@@ -135,7 +135,7 @@ class icarl_regularization_v3(BaseLearner):
         self.test_new_loader = DataLoader(test_new_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
         test_all_dataset = data_manager.get_dataset(np.arange(0, self._total_classes), source='test', mode='test')
-        self.test_all_loader = DataLoader(test_all_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        self.test_loader = DataLoader(test_all_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
         
         # Procedure
         if len(self._multiple_gpus) > 1:
@@ -147,12 +147,12 @@ class icarl_regularization_v3(BaseLearner):
             train_inverse_dataset = data_manager.get_dataset(np.arange(self._known_classes, self._total_classes), source='train',
                                                     mode='train', appendent=self._get_train_inverse_memory())
             self.train_inverse_loader = DataLoader(train_inverse_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-            self._train_adv(self.train_inverse_loader, self.test_all_loader)
+            self._train_adv(self.train_inverse_loader, self.test_loader)
         else:
             train_all_dataset = data_manager.get_dataset(np.arange(self._known_classes, self._total_classes), source='train',
                                                     mode='train', appendent=self._get_memory())
             self.train_all_loader = DataLoader(train_all_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-            self._train_adv(self.train_all_loader, self.test_all_loader)
+            self._train_adv(self.train_all_loader, self.test_loader)
 
         #update memory
         if self._total_classes != sum(data_manager._increments):

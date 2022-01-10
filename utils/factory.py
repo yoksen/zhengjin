@@ -16,7 +16,7 @@ from models.twobn_cl_inverse_v2 import twobn_cl_inverse_v2
 from models.twobn_cl_inverse_mixup import twobn_cl_inverse_mixup
 from models.icarl_consistency_regularization import icarl_regularization
 from models.icarl_regularization_v2 import icarl_regularization_v2
-from zhengjin.models.icarl_regularization_v3 import icarl_regularization_v3
+from models.icarl_regularization_v3 import icarl_regularization_v3
 
 def get_model(model_name, args):
     name = model_name.lower()
