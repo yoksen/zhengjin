@@ -8,6 +8,7 @@ from convs.ucir_resnet import resnet18 as cosine_resnet18
 from convs.ucir_resnet import resnet34 as cosine_resnet34
 from convs.ucir_resnet import resnet50 as cosine_resnet50
 from convs.linears import SimpleLinear, SplitCosineLinear, CosineLinear
+from convs.cifar_twobn_resnet_cbam import resnet18_cbam as resnet18_2bn_cbam
 import convs.twobn_resnet as twobn_resnet
 import convs.cifar_twobn_resnet as cifar_twobn_resnet
 import convs.cifar_multibn_resnet as cifar_multibn_resnet
@@ -32,7 +33,6 @@ def get_convnet(convnet_type, pretrained=False):
     elif name == 'cosine_resnet50':
         return cosine_resnet50(pretrained=pretrained)
     elif name == 'resnet18_2bn':
-
         norm_layer = twobn_resnet.MixBatchNorm2d
         attacker = twobn_resnet.PGDAttacker(num_iter=1, epsilon=1, step_size=1)
         net = twobn_resnet.resnet18(norm_layer=norm_layer, attacker=attacker)
@@ -45,6 +45,10 @@ def get_convnet(convnet_type, pretrained=False):
         return net
     elif name == 'resnet32_multibn':
         net = cifar_multibn_resnet.resnet32()
+        return net
+    elif name == 'resnet18_2bn_cbam':
+        net = resnet18_2bn_cbam(mix=True)
+        print('creat resnet18_2bn_cbam!')
         return net
     else:
         raise NotImplementedError('Unknown type {}'.format(convnet_type))
