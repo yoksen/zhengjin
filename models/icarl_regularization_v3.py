@@ -37,6 +37,7 @@ milestones_init = [100, 150, 200]
 lrate_decay_init = 0.1
 weight_decay_init = 1e-4
 
+
 epochs = 160
 lrate = 1.0
 milestones = [100 , 150 , 200]
