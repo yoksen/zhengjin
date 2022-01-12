@@ -34,14 +34,14 @@ EPSILON = 1e-8
 
 
 # CIFAR100, ResNet32
-epochs_init = 2
+epochs_init = 160
 lrate_init = 1.0
 milestones_init = [100, 150, 200]
 lrate_decay_init = 0.1
 weight_decay_init = 1e-4
 
 
-epochs = 2
+epochs = 160
 lrate = 1.0
 milestones = [100, 150, 200]
 lrate_decay = 0.1
@@ -72,10 +72,13 @@ def get_image_prior_losses(inputs_jit):
 
 def plot_contrastive_imgs(origin_imgs, inverse_imgs, targets, img_dir):
     bs = origin_imgs.shape[0]
+    mean = torch.tensor([0.5071, 0.4867, 0.4408])
+    std = torch.tensor([0.2675, 0.2565, 0.2761])
 
     for i in range(bs):
-        ori_img = origin_imgs[i].detach().cpu().numpy().transpose((1, 2, 0))
-        inv_img = inverse_imgs[i].detach().cpu().numpy().transpose((1, 2, 0))
+
+        ori_img = (origin_imgs[i].mul_(std[:,None,None]).add_(mean[:,None,None]).detach().cpu().numpy().transpose((1, 2, 0)) *255).astype(np.uint8)
+        inv_img = (inverse_imgs[i].detach().cpu().numpy().transpose((1, 2, 0)) *255).astype(np.uint8)
         plt.subplot(1, 2, 1)
         plt.imshow(ori_img)
         plt.xticks(())
@@ -93,7 +96,7 @@ def plot_contrastive_imgs(origin_imgs, inverse_imgs, targets, img_dir):
                 if exc.errno != errno.EEXIST:
                     raise
                 pass
-        file_name = f'{targets[i]}\{i}.png'
+        file_name = f'{targets[i]}/{i}.png'
         save_path = os.path.join(img_dir, file_name)
         plt.savefig(save_path)
 
@@ -101,7 +104,7 @@ def save_memory_imgs(inverse_imgs, targets, img_dir):
     bs = inverse_imgs.shape[0]
 
     for i in range(bs):
-        inv_img = inverse_imgs[i].detach().cpu().numpy().transpose((1, 2, 0))
+        inv_img = (inverse_imgs[i].detach().cpu().numpy().transpose((1, 2, 0)) *255).astype(np.uint8)
         plt.imshow(inv_img)
         plt.xticks(())
         plt.yticks(())
@@ -113,7 +116,7 @@ def save_memory_imgs(inverse_imgs, targets, img_dir):
                 if exc.errno != errno.EEXIST:
                     raise
                 pass
-        file_name = f'{targets[i]}\{i}.png'
+        file_name = f'{targets[i]}/{i}.png'
         save_path = os.path.join(img_dir, file_name)
         plt.savefig(save_path)
 
@@ -667,8 +670,8 @@ class icarl_regularization_v4(BaseLearner):
     def rebuild_image_fv_bn(self,image, model, randstart=True):
         model.eval()
         model.set_hook()
-        normalize = T.Normalize(mean=(.485, .456, .406),
-                                std=(.229, .224, .225))
+        normalize = T.Normalize(mean=(0.5071, 0.4867, 0.4408),
+                                std=(0.2675, 0.2565, 0.2761))
 
         with torch.no_grad():
             # ori_fv = model.fv( image.to(device) )
