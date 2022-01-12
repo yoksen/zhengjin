@@ -89,15 +89,16 @@ def plot_contrastive_imgs(origin_imgs, inverse_imgs, targets, img_dir):
         plt.xticks(())
         plt.yticks(())
 
-        if not os.path.exists(img_dir):
+        img_path = os.path.join(img_dir, str(targets[i].item()))
+        if not os.path.exists(img_path):
             try:
-                os.makedirs(img_dir)
+                os.makedirs(img_path)
             except OSError as exc:
                 if exc.errno != errno.EEXIST:
                     raise
                 pass
-        file_name = f'{targets[i]}/{i}.png'
-        save_path = os.path.join(img_dir, file_name)
+        file_name = f'{i}.png'
+        save_path = os.path.join(img_path, file_name)
         plt.savefig(save_path)
 
 def save_memory_imgs(inverse_imgs, targets, img_dir):
@@ -109,15 +110,16 @@ def save_memory_imgs(inverse_imgs, targets, img_dir):
         plt.xticks(())
         plt.yticks(())
 
-        if not os.path.exists(img_dir):
+        img_path = os.path.join(img_dir, str(targets[i].item()))
+        if not os.path.exists(img_path):
             try:
-                os.makedirs(img_dir)
+                os.makedirs(img_path)
             except OSError as exc:
                 if exc.errno != errno.EEXIST:
                     raise
                 pass
-        file_name = f'{targets[i]}/{i}.png'
-        save_path = os.path.join(img_dir, file_name)
+        file_name = f'{i}.png'
+        save_path = os.path.join(img_path, file_name)
         plt.savefig(save_path)
 
 class icarl_regularization_v4(BaseLearner):
