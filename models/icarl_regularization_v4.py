@@ -18,6 +18,7 @@ from utils.inc_net import IncrementalNet,Twobn_IncrementalNet
 from utils.toolkit import target2onehot, tensor2numpy
 from scipy.spatial.distance import cdist
 from utils.pgd_attack import create_attack
+from matplotlib import pyplot as plt
 
 EPSILON = 1e-8
 
@@ -33,16 +34,16 @@ EPSILON = 1e-8
 
 
 # CIFAR100, ResNet32
-epochs_init = 160
+epochs_init = 2
 lrate_init = 1.0
 milestones_init = [100, 150, 200]
 lrate_decay_init = 0.1
 weight_decay_init = 1e-4
 
 
-epochs = 160
+epochs = 2
 lrate = 1.0
-milestones = [100 , 150 , 200]
+milestones = [100, 150, 200]
 lrate_decay = 0.1
 weight_decay = 1e-4
 batch_size = 128
@@ -68,14 +69,22 @@ def get_image_prior_losses(inputs_jit):
     loss_var_l1 = loss_var_l1 * 255.0
     return loss_var_l1, loss_var_l2
 
-def save_imgs(batch_img, task_id ,class_id):
-    toPIL = T.ToPILImage()
-    bs = batch_img.shape[0]
-    save_path_list =[]
+
+def plot_contrastive_imgs(origin_imgs, inverse_imgs, targets, img_dir):
+    bs = origin_imgs.shape[0]
 
     for i in range(bs):
-        img = toPIL(batch_img[i].detach().cpu())
-        img_dir = f'./data/task_{task_id}/{class_id}/'
+        ori_img = origin_imgs[i].detach().cpu().numpy().transpose((1, 2, 0))
+        inv_img = inverse_imgs[i].detach().cpu().numpy().transpose((1, 2, 0))
+        plt.subplot(1, 2, 1)
+        plt.imshow(ori_img)
+        plt.xticks(())
+        plt.yticks(())
+
+        plt.subplot(1, 2, 2)
+        plt.imshow(inv_img)
+        plt.xticks(())
+        plt.yticks(())
 
         if not os.path.exists(img_dir):
             try:
@@ -84,12 +93,29 @@ def save_imgs(batch_img, task_id ,class_id):
                 if exc.errno != errno.EEXIST:
                     raise
                 pass
-        file_name = f'{i}.png'
+        file_name = f'{targets[i]}\{i}.png'
         save_path = os.path.join(img_dir, file_name)
-        img.save(save_path)
-        save_path_list.append(save_path)
+        plt.savefig(save_path)
 
-    return save_path_list
+def save_memory_imgs(inverse_imgs, targets, img_dir):
+    bs = inverse_imgs.shape[0]
+
+    for i in range(bs):
+        inv_img = inverse_imgs[i].detach().cpu().numpy().transpose((1, 2, 0))
+        plt.imshow(inv_img)
+        plt.xticks(())
+        plt.yticks(())
+
+        if not os.path.exists(img_dir):
+            try:
+                os.makedirs(img_dir)
+            except OSError as exc:
+                if exc.errno != errno.EEXIST:
+                    raise
+                pass
+        file_name = f'{targets[i]}\{i}.png'
+        save_path = os.path.join(img_dir, file_name)
+        plt.savefig(save_path)
 
 class icarl_regularization_v4(BaseLearner):
     def __init__(self, args):
@@ -97,6 +123,9 @@ class icarl_regularization_v4(BaseLearner):
         super().__init__(args)
         self._network = Twobn_IncrementalNet(args['convnet_type'], False)
         self._data_train_inverse, self._targets_train_inverse = np.array([]), np.array([])
+
+        self._visualize_img_dir = "./visualize/{}/base_{}/incre_{}/{}/".format(
+                                    args['dataset'], args['init_cls'], args['increment'], args['model_name'])
 
         # log hyperparameter
         logging.info(50*"-")
@@ -475,6 +504,8 @@ class icarl_regularization_v4(BaseLearner):
         _class_means = np.zeros((self._total_classes, self.feature_dim))
         _inverse_class_means = np.zeros((self._total_classes, self.feature_dim))
 
+        img_dir = os.path.join(self._visualize_img_dir, "task_{}/memory".format(self._cur_task))
+
         # Calculate the means of old classes with newly trained network
         for class_idx in range(self._known_classes):
             # update old classes images
@@ -487,9 +518,12 @@ class icarl_regularization_v4(BaseLearner):
 
             # inverse_images_path
             inverse_old_class_images_ = []
-            for _ , images , _ in class_loader:
+            for _ , images, targets in class_loader:
                 #to be updated
                 inverse_images_batch = self.rebuild_image_fv_bn(images.to(self._device), self._network.convnet, randstart=True)
+
+                save_memory_imgs(inverse_images_batch, targets, img_dir)
+                
                 inverse_images_batch = inverse_images_batch.detach().cpu().numpy().transpose(0,2,3,1)
                 inverse_images_batch = (inverse_images_batch*255).astype(np.uint8)
                 inverse_old_class_images_.extend(inverse_images_batch)
@@ -543,8 +577,11 @@ class icarl_regularization_v4(BaseLearner):
 
             # get inverse image
             inverse_images_ = []
-            for _ , images , _ in class_loader:
+            for _ , images , targets in class_loader:
                 inverse_images_batch = self.rebuild_image_fv_bn(images.to(self._device), self._network.convnet, randstart=True)
+                
+                save_memory_imgs(inverse_images_batch, targets, img_dir)
+
                 inverse_images_batch = inverse_images_batch.detach().cpu().numpy().transpose(0,2,3,1)
                 inverse_images_batch = (inverse_images_batch*255).astype(np.uint8)
                 inverse_images_.extend(inverse_images_batch)
@@ -591,13 +628,21 @@ class icarl_regularization_v4(BaseLearner):
         exemplar_loader = DataLoader(exemplar_dset, batch_size=batch_size, shuffle=False, num_workers=4)
 
         inverse_images_ = []
-        inverse_targets_ = []
+        inverse_targets_ = []         
+
+        img_dir = os.path.join(self._visualize_img_dir, "task_{}/train".format(self._cur_task))
+        count = 0
         for _ , images, targets in exemplar_loader:
             inverse_images_batch = self.rebuild_image_fv_bn(images.to(self._device), self._network.convnet, randstart=True)
+
+            if count % 4 == 0:
+                plot_contrastive_imgs(images, inverse_images_batch, targets, img_dir)
+            
             inverse_images_batch = inverse_images_batch.detach().cpu().numpy().transpose(0,2,3,1)
             inverse_images_batch = (inverse_images_batch*255).astype(np.uint8)
             inverse_images_.extend(inverse_images_batch)
             inverse_targets_.extend(targets)
+            count += 1
 
         inverse_images_ = np.array(inverse_images_)
         inverse_targets_ = np.array(inverse_targets_)
