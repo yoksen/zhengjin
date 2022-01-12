@@ -17,6 +17,7 @@ from models.twobn_cl_inverse_mixup import twobn_cl_inverse_mixup
 from models.icarl_consistency_regularization import icarl_regularization
 from models.icarl_regularization_v2 import icarl_regularization_v2
 from models.icarl_regularization_v3 import icarl_regularization_v3
+from models.icarl_regularization_v4 import icarl_regularization_v4
 
 def get_model(model_name, args):
     name = model_name.lower()
@@ -58,3 +59,5 @@ def get_model(model_name, args):
         return icarl_regularization_v2(args)
     elif name == 'icarl_regularization_v3':
         return icarl_regularization_v3(args)
+    elif name == 'icarl_regularization_v4':
+        return icarl_regularization_v4(args)

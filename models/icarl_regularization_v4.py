@@ -1,11 +1,13 @@
 import logging
 import numpy as np
+from numpy.core.fromnumeric import mean
 from tqdm import tqdm
 import torch
 import random
 import os
 import time
 import errno
+import copy
 from torch import nn
 from torch import optim
 from torch.nn import functional as F
@@ -93,7 +95,7 @@ def save_imgs(batch_img, task_id ,class_id):
 
 class icarl_regularization_v4(BaseLearner):
     def __init__(self, args):
-        print('create icarl_regularization_v3!!')
+        print('create icarl_regularization_v4!!')
         super().__init__(args)
         self._network = Twobn_IncrementalNet(args['convnet_type'], False)
         self._data_train_inverse, self._targets_train_inverse = np.array([]), np.array([])
@@ -350,14 +352,121 @@ class icarl_regularization_v4(BaseLearner):
             targets.append(_targets)
 
         return np.concatenate(vectors), np.concatenate(targets)
+    
+    #reduce_exemplar and recalculate the mean
+    def _reduce_exemplar(self, data_manager, m):
+        logging.info('Reducing exemplars...({} per classes)'.format(m))
+        dummy_data, dummy_targets = copy.deepcopy(self._data_memory), copy.deepcopy(self._targets_memory)
+        self._class_means = np.zeros((self._total_classes, self.feature_dim))
+        self._inverse_class_means = np.zeros((self._total_classes, self.feature_dim))
+        
+        self._data_memory, self._targets_memory = np.array([]), np.array([])
+
+        for class_idx in range(self._known_classes):
+            mask = np.where(dummy_targets == class_idx)[0]
+            dd, dt = dummy_data[mask][:m], dummy_targets[mask][:m]
+
+            class_dset = data_manager.get_dataset([], source='train', mode='test',
+                                                  appendent=(dd, dt))
+            class_loader = DataLoader(class_dset, batch_size=batch_size, shuffle=False, num_workers=4)
+
+            # update inverse images
+            inverse_old_class_images_ = []
+            for _ , images , _ in class_loader:
+                inverse_images_batch = self.rebuild_image_fv_bn(images.to(self._device), self._network.convnet, randstart=True)
+                inverse_images_batch = inverse_images_batch.detach().cpu().numpy().transpose(0,2,3,1)
+                inverse_images_batch = (inverse_images_batch*255).astype(np.uint8)
+                inverse_old_class_images_.extend(inverse_images_batch)
+
+            inverse_old_class_images_ = np.array(inverse_old_class_images_)
+
+            self._data_memory = np.concatenate((self._data_memory, inverse_old_class_images_)) if len(self._data_memory) != 0 else inverse_old_class_images_
+            self._targets_memory = np.concatenate((self._targets_memory, dt)) if len(self._targets_memory) != 0 else dt
+
+            # Inverse exemplar mean
+            idx_dataset = data_manager.get_dataset([], source='train', mode='test', appendent=(inverse_old_class_images_, dt))
+            idx_loader = DataLoader(idx_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+            vectors, _ = self._extract_vectors(idx_loader)
+            vectors = (vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
+            mean = np.mean(vectors, axis=0)
+            mean = mean / np.linalg.norm(mean)
+
+            self._inverse_class_means[class_idx, :] = mean
+            self._class_means[class_idx, :] = mean
+
+    def _construct_exemplar(self, data_manager, m):
+        logging.info('Constructing exemplars...({} per classes)'.format(m))
+        for class_idx in range(self._known_classes, self._total_classes):
+            data, targets, idx_dataset = data_manager.get_dataset(np.arange(class_idx, class_idx+1), source='train',
+                                                                  mode='test', ret_data=True)
+            idx_loader = DataLoader(idx_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+            vectors, _ = self._extract_vectors(idx_loader)
+            vectors = (vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
+            class_mean = np.mean(vectors, axis=0)
+
+            # Select
+            selected_exemplars = []
+            exemplar_vectors = []  # [n, feature_dim]
+            for k in range(1, m+1):
+                S = np.sum(exemplar_vectors, axis=0)  # [feature_dim] sum of selected exemplars vectors
+                mu_p = (vectors + S) / k  # [n, feature_dim] sum to all vectors
+                i = np.argmin(np.sqrt(np.sum((class_mean - mu_p) ** 2, axis=1)))
+                selected_exemplars.append(np.array(data[i]))  # New object to avoid passing by inference
+                exemplar_vectors.append(np.array(vectors[i]))  # New object to avoid passing by inference
+
+                vectors = np.delete(vectors, i, axis=0)  # Remove it to avoid duplicative selection
+                data = np.delete(data, i, axis=0)  # Remove it to avoid duplicative selection
+
+            selected_exemplars = np.array(selected_exemplars)
+            exemplar_targets = np.full(m, class_idx)
+
+            #get inverse samples
+            class_dset = data_manager.get_dataset([], source='train', mode='test',
+                                                  appendent=(selected_exemplars, exemplar_targets))
+            class_loader = DataLoader(class_dset, batch_size=batch_size, shuffle=False, num_workers=4)
+            inverse_old_class_images_ = []
+            for _ , images , _ in class_loader:
+                inverse_images_batch = self.rebuild_image_fv_bn(images.to(self._device), self._network.convnet, randstart=True)
+                inverse_images_batch = inverse_images_batch.detach().cpu().numpy().transpose(0,2,3,1)
+                inverse_images_batch = (inverse_images_batch*255).astype(np.uint8)
+                inverse_old_class_images_.extend(inverse_images_batch)
+
+            inverse_old_class_images_ = np.array(inverse_old_class_images_)
+
+            self._data_memory = np.concatenate((self._data_memory, inverse_old_class_images_)) if len(self._data_memory) != 0 \
+                else inverse_old_class_images_
+            self._targets_memory = np.concatenate((self._targets_memory, exemplar_targets)) if \
+                len(self._targets_memory) != 0 else exemplar_targets
+
+            # Exemplar mean
+            idx_dataset = data_manager.get_dataset([], source='train', mode='test',
+                                                   appendent=(selected_exemplars, exemplar_targets))
+            idx_loader = DataLoader(idx_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+            vectors, _ = self._extract_vectors(idx_loader)
+            vectors = (vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
+            mean = np.mean(vectors, axis=0)
+            mean = mean / np.linalg.norm(mean)
+
+            self._class_means[class_idx, :] = mean
+
+            # Inverse exemplar mean
+            idx_dataset = data_manager.get_dataset([], source='train', mode='test',
+                                                   appendent=(inverse_old_class_images_, exemplar_targets))
+            idx_loader = DataLoader(idx_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+            vectors, _ = self._extract_vectors(idx_loader)
+            vectors = (vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
+            mean = np.mean(vectors, axis=0)
+            mean = mean / np.linalg.norm(mean)
+
+            self._inverse_class_means[class_idx, :] = mean
 
     def _construct_exemplar_unified(self, data_manager, m):
         logging.info('Constructing exemplars for new classes...({} per classes)'.format(m))
         _class_means = np.zeros((self._total_classes, self.feature_dim))
+        _inverse_class_means = np.zeros((self._total_classes, self.feature_dim))
 
         # Calculate the means of old classes with newly trained network
         for class_idx in range(self._known_classes):
-
             # update old classes images
             mask = np.where(self._targets_memory == class_idx)[0]
             class_data, class_targets = self._data_memory[mask], self._targets_memory[mask]
@@ -378,7 +487,6 @@ class icarl_regularization_v4(BaseLearner):
             inverse_old_class_images_ = np.array(inverse_old_class_images_)
             self._data_memory[mask] = inverse_old_class_images_
 
-
             # update old classes mean
             mask = np.where(self._targets_memory == class_idx)[0]
             class_data, class_targets = self._data_memory[mask], self._targets_memory[mask]
@@ -392,12 +500,35 @@ class icarl_regularization_v4(BaseLearner):
             mean = mean / np.linalg.norm(mean)
 
             _class_means[class_idx, :] = mean
+            _inverse_class_means[class_idx, :] = mean
 
         # Construct exemplars for new classes and calculate the means
         for class_idx in range(self._known_classes, self._total_classes):
-            data, targets, class_dset = data_manager.get_dataset(np.arange(class_idx, class_idx+1), source='train',
-                                                                 mode='test', ret_data=True)
+            data, targets, idx_dataset = data_manager.get_dataset(np.arange(class_idx, class_idx+1), source='train',
+                                                                  mode='test', ret_data=True)
+            idx_loader = DataLoader(idx_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+            vectors, _ = self._extract_vectors(idx_loader)
+            vectors = (vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
+            class_mean = np.mean(vectors, axis=0)
 
+            # Select
+            selected_exemplars = []
+            exemplar_vectors = []  # [n, feature_dim]
+            for k in range(1, m+1):
+                S = np.sum(exemplar_vectors, axis=0)  # [feature_dim] sum of selected exemplars vectors
+                mu_p = (vectors + S) / k  # [n, feature_dim] sum to all vectors
+                i = np.argmin(np.sqrt(np.sum((class_mean - mu_p) ** 2, axis=1)))
+                selected_exemplars.append(np.array(data[i]))  # New object to avoid passing by inference
+                exemplar_vectors.append(np.array(vectors[i]))  # New object to avoid passing by inference
+
+                vectors = np.delete(vectors, i, axis=0)  # Remove it to avoid duplicative selection
+                data = np.delete(data, i, axis=0)  # Remove it to avoid duplicative selection
+
+            selected_exemplars = np.array(selected_exemplars)
+            exemplar_targets = np.full(m, class_idx)
+
+            class_dset = data_manager.get_dataset([], source='train', mode='test',
+                                                  appendent=(selected_exemplars, exemplar_targets))
             class_loader = DataLoader(class_dset, batch_size=batch_size, shuffle=False, num_workers=4)
 
             # get inverse image
@@ -409,25 +540,37 @@ class icarl_regularization_v4(BaseLearner):
                 inverse_images_.extend(inverse_images_batch)
 
             inverse_images_ = np.array(inverse_images_)
-            inverse_targets = np.full(inverse_images_.shape[0], class_idx)
 
             # Exemplar mean
-            exemplar_dset = data_manager.get_dataset([], source='train', mode='test',
-                                                     appendent=(inverse_images_, inverse_targets))
-            exemplar_loader = DataLoader(exemplar_dset, batch_size=batch_size, shuffle=False, num_workers=4)
-            vectors, _ = self._extract_vectors(exemplar_loader)
+            idx_dataset = data_manager.get_dataset([], source='train', mode='test',
+                                                   appendent=(selected_exemplars, exemplar_targets))
+            idx_loader = DataLoader(idx_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+            vectors, _ = self._extract_vectors(idx_loader)
             vectors = (vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
             mean = np.mean(vectors, axis=0)
             mean = mean / np.linalg.norm(mean)
+
             _class_means[class_idx, :] = mean
+
+            # Inverse exemplar mean
+            idx_dataset = data_manager.get_dataset([], source='train', mode='test',
+                                                   appendent=(inverse_old_class_images_, exemplar_targets))
+            idx_loader = DataLoader(idx_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+            vectors, _ = self._extract_vectors(idx_loader)
+            vectors = (vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
+            mean = np.mean(vectors, axis=0)
+            mean = mean / np.linalg.norm(mean)
+
+            _inverse_class_means[class_idx, :] = mean
 
             # add to memory
             self._data_memory = np.concatenate((self._data_memory, inverse_images_)) if len(self._data_memory) != 0 \
                 else inverse_images_
-            self._targets_memory = np.concatenate((self._targets_memory, inverse_targets)) if \
-                len(self._targets_memory) != 0 else inverse_targets
+            self._targets_memory = np.concatenate((self._targets_memory, exemplar_targets)) if \
+                len(self._targets_memory) != 0 else exemplar_targets
         
         self._class_means = _class_means
+        self._inverse_class_means = _inverse_class_means
         logging.info('Finishing constructing inverse exemplars for known classes. The number of exemplars is {}'.format(self._data_memory.shape[0]))
 
     def _get_train_inverse_data(self, data_manager):
