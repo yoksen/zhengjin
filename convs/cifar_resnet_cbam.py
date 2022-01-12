@@ -143,6 +143,7 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.feature = nn.AvgPool2d(4, stride=1)
+        self.out_dim = 512 * block.expansion
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
         for m in self.modules():
@@ -173,15 +174,19 @@ class ResNet(nn.Module):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
-        dim = x.size()[-1]
+        x_1 = self.layer1(x)
+        x_2 = self.layer2(x_1)
+        x_3 = self.layer3(x_2)
+        x_4 = self.layer4(x_3)
+        dim = x_4.size()[-1]
         pool = nn.AvgPool2d(dim, stride=1)
-        x = pool(x)
-        x = x.view(x.size(0), -1)
-        return x
+        pooled = pool(x_4)
+        features = pooled.view(x.size(0), -1)
+        return {
+            'fmaps': [x_1, x_2, x_3, x_4],
+            'features': features
+        }
+
 
 def resnet18_cbam(pretrained=False, **kwargs):
     """Constructs a ResNet-18 model.

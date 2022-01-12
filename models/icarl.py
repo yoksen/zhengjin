@@ -12,20 +12,7 @@ from utils.toolkit import target2onehot, tensor2numpy
 
 EPSILON = 1e-8
 
-# ImageNet1000, ResNet18
-# epochs = 60
-# lrate = 2.0
-# # lrate = 0.1
-# milestones = [20, 30, 40, 50]
-# lrate_decay = 0.2
-# batch_size = 128
-# weight_decay = 1e-5
-# num_workers = 16
-
-
 # CIFAR100, ResNet32
-# epochs = 100
-
 epochs_init = 70
 lrate_init = 2.0
 milestones_init = [49, 63]
