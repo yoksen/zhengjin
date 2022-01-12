@@ -33,14 +33,14 @@ EPSILON = 1e-8
 
 
 # CIFAR100, ResNet32
-epochs_init = 2
+epochs_init = 160
 lrate_init = 1.0
 milestones_init = [100, 150, 200]
 lrate_decay_init = 0.1
 weight_decay_init = 1e-4
 
 
-epochs = 2
+epochs = 160
 lrate = 1.0
 milestones = [100 , 150 , 200]
 lrate_decay = 0.1
@@ -106,6 +106,18 @@ class icarl_regularization_v4(BaseLearner):
         logging.info(50*"-")
         for item in hyperparameters:
             logging.info('{}: {}'.format(item, eval(item)))
+    
+    def eval_task(self):
+        y_pred, y_true = self._eval_cnn(self.test_loader)
+        cnn_accy = self._evaluate(y_pred, y_true)
+
+        y_pred, y_true = self._eval_nme(self.test_loader, self._class_means)
+        nme_accy = self._evaluate(y_pred, y_true)
+
+        y_pred, y_true = self._eval_nme(self.test_loader, self._inverse_class_means)
+        inverse_nme_accy = self._evaluate(y_pred, y_true)
+
+        return cnn_accy, nme_accy, inverse_nme_accy
 
     def after_task(self):
         self._old_network = self._network.copy().freeze()

@@ -85,8 +85,14 @@ class BaseLearner(object):
             nme_accy = self._evaluate(y_pred, y_true)
         else:
             nme_accy = None
+        
+        if hasattr(self, '_inverse_class_means'):
+            y_pred, y_true = self._eval_nme(self.test_loader, self._inverse_class_means)
+            inverse_nme_accy = self._evaluate(y_pred, y_true)
+        else:
+            inverse_nme_accy = None
 
-        return cnn_accy, nme_accy
+        return cnn_accy, nme_accy, inverse_nme_accy
 
     def incremental_train(self):
         pass
