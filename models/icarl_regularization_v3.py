@@ -116,9 +116,9 @@ class icarl_regularization_v3(BaseLearner):
 
     def save_model(self):
         if len(self._multiple_gpus) > 1:
-            torch.save(self._network.module.state_dict(), "./icarl_regularization_v3_duplex_{}_{}.pt".format(duplex, self._cur_task))
+            torch.save(self._network.module.state_dict(), "./saved_model/icarl_regularization_v3_duplex_{}_{}.pt".format(duplex, self._cur_task))
         else:
-            torch.save(self._network.state_dict(), "./icarl_regularization_v3_duplex_{}_{}.pt".format(duplex, self._cur_task))
+            torch.save(self._network.state_dict(), "./saved_model/icarl_regularization_v3_duplex_{}_{}.pt".format(duplex, self._cur_task))
 
     def incremental_train(self, data_manager):
         self._cur_task += 1
