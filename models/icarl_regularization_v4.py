@@ -55,7 +55,6 @@ hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_
                    "epochs","lrate", "milestones", "lrate_decay", "weight_decay","batch_size", "num_workers",\
                    "duplex", "iterations"]
 
-
 def get_image_prior_losses(inputs_jit):
     # COMPUTE total variation regularization loss
     diff1 = inputs_jit[:, :, :, :-1] - inputs_jit[:, :, :, 1:]
@@ -70,7 +69,6 @@ def get_image_prior_losses(inputs_jit):
     return loss_var_l1, loss_var_l2
 
 def save_imgs(batch_img, task_id ,class_id):
-
     toPIL = T.ToPILImage()
     bs = batch_img.shape[0]
     save_path_list =[]
@@ -566,7 +564,7 @@ class icarl_regularization_v4(BaseLearner):
 
             # Inverse exemplar mean
             idx_dataset = data_manager.get_dataset([], source='train', mode='test',
-                                                   appendent=(inverse_old_class_images_, exemplar_targets))
+                                                   appendent=(inverse_images_, exemplar_targets))
             idx_loader = DataLoader(idx_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
             vectors, _ = self._extract_vectors(idx_loader)
             vectors = (vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
