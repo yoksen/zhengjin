@@ -26,6 +26,8 @@ class BaseLearner(object):
         self._fixed_memory = args['fixed_memory']
         self._device = args['device'][0]
         self._multiple_gpus = args['device']
+        self._init_cls = args['init_cls']
+        self._increment = args['increment']
 
     @property
     def exemplar_size(self):
@@ -68,7 +70,7 @@ class BaseLearner(object):
 
     def _evaluate(self, y_pred, y_true):
         ret = {}
-        grouped = accuracy(y_pred.T[0], y_true, self._known_classes)
+        grouped = accuracy(y_pred.T[0], y_true, self._known_classes, self._init_cls, self._increment)
         ret['grouped'] = grouped
         ret['top1'] = grouped['total']
         ret['top{}'.format(self.topk)] = np.around((y_pred.T == np.tile(y_true, (self.topk, 1))).sum()*100/len(y_true),
@@ -85,14 +87,8 @@ class BaseLearner(object):
             nme_accy = self._evaluate(y_pred, y_true)
         else:
             nme_accy = None
-        
-        if hasattr(self, '_inverse_class_means'):
-            y_pred, y_true = self._eval_nme(self.test_loader, self._inverse_class_means)
-            inverse_nme_accy = self._evaluate(y_pred, y_true)
-        else:
-            inverse_nme_accy = None
 
-        return cnn_accy, nme_accy, inverse_nme_accy
+        return cnn_accy, nme_accy
 
     def incremental_train(self):
         pass

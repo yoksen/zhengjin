@@ -25,6 +25,7 @@ def _train(args):
 
     data_manager = DataManager(args['dataset'], args['shuffle'], args['seed'], args['init_cls'], args['increment'])
     model = factory.get_model(args['model_name'], args)
+    inverse_nme_accy = None
 
     cnn_curve, nme_curve, inverse_nme_curve = {'top1': [], 'top5': []}, {'top1': [], 'top5': []}, {'top1': [], 'top5': []}
     for task in range(data_manager.nb_tasks):
