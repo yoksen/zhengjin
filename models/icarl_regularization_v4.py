@@ -527,7 +527,7 @@ class icarl_regularization_v4(BaseLearner):
                 #to be updated
                 inverse_images_batch = self.rebuild_image_fv_bn(images.to(self._device), self._network.convnet, randstart=True)
 
-                save_memory_imgs(inverse_images_batch, targets, img_dir)
+                # save_memory_imgs(inverse_images_batch, targets, img_dir)
                 
                 inverse_images_batch = inverse_images_batch.detach().cpu().numpy().transpose(0,2,3,1)
                 inverse_images_batch = (inverse_images_batch*255).astype(np.uint8)
@@ -585,7 +585,7 @@ class icarl_regularization_v4(BaseLearner):
             for _ , images , targets in class_loader:
                 inverse_images_batch = self.rebuild_image_fv_bn(images.to(self._device), self._network.convnet, randstart=True)
                 
-                save_memory_imgs(inverse_images_batch, targets, img_dir)
+                # save_memory_imgs(inverse_images_batch, targets, img_dir)
 
                 inverse_images_batch = inverse_images_batch.detach().cpu().numpy().transpose(0,2,3,1)
                 inverse_images_batch = (inverse_images_batch*255).astype(np.uint8)
@@ -640,8 +640,8 @@ class icarl_regularization_v4(BaseLearner):
         for _ , images, targets in exemplar_loader:
             inverse_images_batch = self.rebuild_image_fv_bn(images.to(self._device), self._network.convnet, randstart=True)
 
-            if count % 4 == 0:
-                plot_contrastive_imgs(images, inverse_images_batch, targets, img_dir)
+            # if count % 4 == 0:
+            #     plot_contrastive_imgs(images, inverse_images_batch, targets, img_dir)
             
             inverse_images_batch = inverse_images_batch.detach().cpu().numpy().transpose(0,2,3,1)
             inverse_images_batch = (inverse_images_batch*255).astype(np.uint8)
