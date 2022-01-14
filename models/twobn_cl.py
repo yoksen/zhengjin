@@ -64,9 +64,9 @@ class twobn_cl(BaseLearner):
 
     def save_model(self):
         if len(self._multiple_gpus) > 1:
-            torch.save(self._network.module.state_dict(), "./icarl_{}.pt".format(self._cur_task))
+            torch.save(self._network.module.state_dict(), "./saved_model/icarl_{}.pt".format(self._cur_task))
         else:
-            torch.save(self._network.state_dict(), "./icarl_{}.pt".format(self._cur_task))
+            torch.save(self._network.state_dict(), "./saved_model/icarl_{}.pt".format(self._cur_task))
 
     def incremental_train(self, data_manager):
         self._cur_task += 1
