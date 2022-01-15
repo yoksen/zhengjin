@@ -25,26 +25,44 @@ EPSILON = 1e-8
 # num_workers = 16
 
 
-# CIFAR100, ResNet32
+# CIFAR100, resnet18_2bn_cbam
+# epochs_init = 70
+# lrate_init = 1e-3
+# milestones_init = [49, 63]
+# lrate_decay_init = 0.1
+# weight_decay_init = 1e-5
+
+# epochs = 70
+# lrate = 1e-3
+# milestones = [49, 63]
+# lrate_decay = 0.1
+# weight_decay = 1e-5  # illness
+# optim_type = "adam"
+# batch_size = 64
+
+# CIFAR100, resnet32_2bn
 epochs_init = 70
-lrate_init = 2.0
+# lrate_init = 1e-2
+lrate_init = 1e-3
 milestones_init = [49, 63]
-lrate_decay_init = 0.2
+lrate_decay_init = 0.1
 weight_decay_init = 1e-5
 
 epochs = 70
-lrate = 2.0
+# lrate = 1e-2
+lrate = 1e-3
 milestones = [49, 63]
-lrate_decay = 0.2
+lrate_decay = 0.1
 weight_decay = 1e-5  # illness
-batch_size = 128
+optim_type = "adam"
+batch_size = 64
+
 num_workers = 4
 
 iterations = 2000
 
 hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_init","weight_decay_init",\
-                   "epochs","lrate", "milestones", "lrate_decay", "weight_decay","batch_size", "num_workers",\
-                   "iterations"]
+                   "epochs","lrate", "milestones", "lrate_decay", "weight_decay", "optim_type", "batch_size", "iterations"]
 
 
 class twobn_cl(BaseLearner):
@@ -53,6 +71,13 @@ class twobn_cl(BaseLearner):
         print('create twobn cl!!')
         super().__init__(args)
         self._network = Twobn_IncrementalNet(args['convnet_type'], False)
+
+        # log hyperparameter
+        logging.info(50*"-")
+        logging.info("log_hyperparameters")
+        logging.info(50*"-")
+        for item in hyperparameters:
+            logging.info('{}: {}'.format(item, eval(item)))
 
     def after_task(self):
         self._old_network = self._network.copy().freeze()
@@ -95,11 +120,16 @@ class twobn_cl(BaseLearner):
             self._old_network.to(self._device)
 
         if self._cur_task == 0:
-            optimizer = optim.SGD(self._network.parameters(), lr=lrate_init, momentum=0.9, weight_decay=weight_decay_init)  # 1e-4
+            if optim_type == "adam":
+                optimizer = optim.Adam(self._network.parameters(), lr=lrate_init, weight_decay=weight_decay_init)
+            else:
+                optimizer = optim.SGD(self._network.parameters(), lr=lrate_init, momentum=0.9, weight_decay=weight_decay_init)  # 1e-3
             scheduler = optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=milestones_init, gamma=lrate_decay_init)
-            # optimizer = optim.Adam(self._network.parameters(), lr=lrate, weight_decay=weight_decay)
         else:
-            optimizer = optim.SGD(self._network.parameters(), lr=lrate, momentum=0.9, weight_decay=weight_decay)  # 1e-5
+            if optim_type == "adam":
+                optimizer = optim.Adam(self._network.parameters(), lr=lrate, weight_decay=weight_decay)
+            else:
+                optimizer = optim.SGD(self._network.parameters(), lr=lrate, weight_decay=weight_decay)
             scheduler = optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=milestones, gamma=lrate_decay)
         self._update_representation_adv(train_loader, test_loader, optimizer, scheduler)
 

@@ -324,10 +324,10 @@ class CifarResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def _forward_impl(self, x):
-        x = self.conv_1_3x3(x)  # [bs, 16, 32, 32]
-        x = F.relu(self.bn_1(x), inplace=True)
+        x_0 = self.conv_1_3x3(x)  # [bs, 16, 32, 32]
+        x_0 = F.relu(self.bn_1(x_0), inplace=True)
 
-        x_1 = self.stage_1(x)  # [bs, 16, 32, 32]
+        x_1 = self.stage_1(x_0)  # [bs, 16, 32, 32]
         x_2 = self.stage_2(x_1)  # [bs, 32, 16, 16]
         x_3 = self.stage_3(x_2)  # [bs, 64, 8, 8]
 
@@ -338,6 +338,7 @@ class CifarResNet(nn.Module):
         # logits = self.fc(features)
         # return logits
         return {
+            'input': x,
             'fmaps': [x_1, x_2, x_3],
             'features': features
         }

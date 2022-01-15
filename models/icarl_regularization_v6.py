@@ -32,22 +32,22 @@ EPSILON = 1e-8
 # CIFAR100, ResNet32
 epochs_init = 160
 lrate_init = 1.0
-milestones_init = [100, 150]
+milestones_init = [100, 150, 200]
 lrate_decay_init = 0.1
 weight_decay_init = 1e-4
 
 
 epochs = 160
 lrate = 1.0
-milestones = [100, 150]
+milestones = [100, 150, 200]
 lrate_decay = 0.1
 weight_decay = 1e-4
 batch_size = 128
 num_workers = 4
 
-iterations = 1000
+iterations = 2000
 vector_num_per_class = 300
-lam = 1e-3
+lam = 1e-4
 
 hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_init","weight_decay_init",\
                    "epochs","lrate", "milestones", "lrate_decay", "weight_decay","batch_size", "num_workers",\
@@ -90,10 +90,10 @@ def save_imgs(batch_img, task_id ,class_id):
 
     return save_path_list
 
-class icarl_regularization_v5(BaseLearner):
-
+#icar + IRD loss
+class icarl_regularization_v6(BaseLearner):
     def __init__(self, args):
-        print('create icarl_regularization_v5!!')
+        print('create icarl_regularization_v6!!')
         super().__init__(args)
         self._inverse_data_memory, self._inverse_targets_memory = np.array([]), np.array([])
         self._network = Twobn_IncrementalNet(args['convnet_type'], False)
@@ -181,7 +181,7 @@ class icarl_regularization_v5(BaseLearner):
                     loss = F.binary_cross_entropy_with_logits(logits, new_onehots)
 
                     old_features = old_ret_dict['features'].detach()
-                    loss_kd = torch.dist(features, old_features, 2)
+                    loss_kd = self._IRD_loss(old_features, features)
 
                     loss += loss + lam * loss_kd
                     
@@ -448,7 +448,6 @@ class icarl_regularization_v5(BaseLearner):
     def rebuild_image_fv_bn(self,image, model, randstart=True):
         model.eval()
         model.set_hook()
-
         normalize = T.Normalize(mean=(0.5071, 0.4867, 0.4408),
                                 std=(0.2675, 0.2565, 0.2761))
 
