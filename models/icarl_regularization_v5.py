@@ -177,7 +177,7 @@ class icarl_regularization_v5(BaseLearner):
                     loss = F.binary_cross_entropy_with_logits(logits, onehots)
                 else:
                     # old_onehots = torch.sigmoid(self._old_network(inputs)['logits'].detach())
-                    old_ret_dict, ori_targets = self._old_network(inputs, ori_targets)
+                    old_ret_dict, ori_targets = self._old_network(ret_dict['input'], ori_targets)
                     old_logits = old_ret_dict['logits'].detach()
                     old_onehots = torch.sigmoid(old_logits)
                     new_onehots = onehots.clone()
