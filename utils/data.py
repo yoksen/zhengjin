@@ -38,10 +38,11 @@ class iCIFAR10(iData):
 
 class iCIFAR100(iData):
     use_path = False
+
     train_trsf = [
-        transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(),
-        transforms.ColorJitter(brightness=63/255)
+        transforms.RandomCrop((32,32),padding=4),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.ColorJitter(brightness=0.24705882352941178)
     ]
     test_trsf = []
     common_trsf = [

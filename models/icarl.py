@@ -12,44 +12,41 @@ from utils.toolkit import target2onehot, tensor2numpy
 
 EPSILON = 1e-8
 
-# CIFAR100, ResNet18
-# epochs_init = 100
+# CIFAR100, resnet18_cbam
+# epochs_init = 70
 # lrate_init = 1e-3
-# milestones_init = [45, 90]
+# milestones_init = [49, 63]
 # lrate_decay_init = 0.1
 # weight_decay_init = 1e-5
 
 
-# epochs = 100
+# epochs = 70
 # lrate = 1e-3
-# milestones = [45, 90]
+# milestones = [49, 63]
 # lrate_decay = 0.1
 # weight_decay = 1e-5  # illness
-
 # optim_type = "adam"
-
 # batch_size = 64
-# num_workers = 4
 
 
 # CIFAR100, ResNet32
 epochs_init = 70
-lrate_init = 2.0
+lrate_init = 1e-2
 milestones_init = [49, 63]
-lrate_decay_init = 0.2
+lrate_decay_init = 0.1
 weight_decay_init = 1e-5
 
 
 epochs = 70
-lrate = 2.0
+lrate = 1e-2
 milestones = [49, 63]
-lrate_decay = 0.2
+lrate_decay = 0.1
 weight_decay = 1e-5  # illness
-optim_type = "sgd"
-
+optim_type = "adam"
 batch_size = 128
+
 num_workers = 4
-hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_init","weight_decay_init", "epochs","lrate", "milestones", "lrate_decay", "weight_decay","batch_size", "num_workers"]
+hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_init","weight_decay_init", "epochs","lrate", "milestones", "lrate_decay", "weight_decay","batch_size", "num_workers", "optim_type"]
 
 
 
@@ -103,7 +100,6 @@ class iCaRL(BaseLearner):
             else:
                 optimizer = optim.SGD(self._network.parameters(), lr=lrate_init, momentum=0.9, weight_decay=weight_decay_init)  # 1e-3
             scheduler = optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=milestones_init, gamma=lrate_decay_init)
-            # optimizer = optim.Adam(self._network.parameters(), lr=lrate, weight_decay=weight_decay)
         else:
             if optim_type == "adam":
                 optimizer = optim.Adam(self._network.parameters(), lr=lrate, weight_decay=weight_decay)
