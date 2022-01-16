@@ -80,6 +80,7 @@ class icarl_regularization_v8(BaseLearner):
         print('create icarl_regularization_v8!!')
         super().__init__(args)
         self._generator = Twobn_IncrementalNet(args['convnet_type'], False)
+        self._generator.update_fc(self._total_classes)
         self._network = Twobn_IncrementalNet(args['convnet_type'], False)
         self._data_train_inverse, self._targets_train_inverse = np.array([]), np.array([])
 
@@ -121,6 +122,8 @@ class icarl_regularization_v8(BaseLearner):
         self._cur_task += 1
         self._total_classes = self._known_classes + data_manager.get_task_size(self._cur_task)
 
+        #add linear layer
+        self._generator.fc = self._generator.generate_fc(self.feature_dim, data_manager.get_task_size(self._cur_task))
         self._network.update_fc(self._total_classes)
         logging.info('Learning on {}-{}'.format(self._known_classes, self._total_classes))
 
@@ -138,6 +141,7 @@ class icarl_regularization_v8(BaseLearner):
         # Procedure
         if len(self._multiple_gpus) > 1:
             self._network = nn.DataParallel(self._network, self._multiple_gpus)
+            self._generator = nn.DataParallel(self._generator, self._multiple_gpus)
         
         if duplex:
             self._train_generator(self.train_new_loader, self.test_new_loader)
@@ -158,6 +162,7 @@ class icarl_regularization_v8(BaseLearner):
 
         if len(self._multiple_gpus) > 1:
             self._network = self._network.module
+            self._generator = self._generator.module
 
     def _train_adv(self, train_loader, test_loader):
         self._network.to(self._device)
@@ -180,21 +185,21 @@ class icarl_regularization_v8(BaseLearner):
         self._update_representation_adv(train_loader, test_loader, optimizer, scheduler)
 
     def _train_generator(self, train_loader, test_loader):
-        self._network.to(self._device)
+        self._generator.to(self._device)
         if self._old_network is not None:
             self._old_network.to(self._device)
 
         if self._cur_task == 0:
             if optim_type == "adam":
-                optimizer = optim.Adam(self._network.parameters(), lr=lrate_init, weight_decay=weight_decay_init)
+                optimizer = optim.Adam(self._generator.parameters(), lr=lrate_init, weight_decay=weight_decay_init)
             else:
-                optimizer = optim.SGD(self._network.parameters(), lr=lrate_init, momentum=0.9, weight_decay=weight_decay_init)  # 1e-3
+                optimizer = optim.SGD(self._generator.parameters(), lr=lrate_init, momentum=0.9, weight_decay=weight_decay_init)  # 1e-3
             scheduler = optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=milestones_init, gamma=lrate_decay_init)
         else:
             if optim_type == "adam":
-                optimizer = optim.Adam(self._network.parameters(), lr=lrate, weight_decay=weight_decay)
+                optimizer = optim.Adam(self._generator.parameters(), lr=lrate, weight_decay=weight_decay)
             else:
-                optimizer = optim.SGD(self._network.parameters(), lr=lrate, weight_decay=weight_decay)
+                optimizer = optim.SGD(self._generator.parameters(), lr=lrate, weight_decay=weight_decay)
             scheduler = optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=milestones, gamma=lrate_decay)
         
         self._update_generator(train_loader, test_loader, optimizer, scheduler)
