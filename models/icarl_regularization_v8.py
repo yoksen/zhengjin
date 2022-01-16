@@ -55,7 +55,7 @@ batch_size = 64
 
 num_workers = 4
 duplex = True
-iterations = 1000
+iterations = 2000
 
 hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_init","weight_decay_init",\
                    "epochs","lrate", "milestones", "lrate_decay", "weight_decay","batch_size", "num_workers",\
@@ -373,6 +373,7 @@ class icarl_regularization_v8(BaseLearner):
         dummy_data, dummy_targets = copy.deepcopy(self._data_memory), copy.deepcopy(self._targets_memory)
         self._class_means = np.zeros((self._total_classes, self.feature_dim))
         self._data_memory, self._targets_memory = np.array([]), np.array([])
+        self._inverse_data_memory, self._inverse_targets_memory = np.array([]), np.array([])
 
         for class_idx in range(self._known_classes):
             mask = np.where(dummy_targets == class_idx)[0]
@@ -596,8 +597,8 @@ class icarl_regularization_v8(BaseLearner):
                 logging.info('Return data for consistency regularization. The number of exemplars is {}'.format(self._data_train_inverse.shape[0]))
                 return (self._data_train_inverse, self._targets_train_inverse)
             else:
-                data_train = np.concatenate((self._data_train_inverse, self._data_memory), axis=0)
-                targets_train = np.concatenate((self._targets_train_inverse, self._targets_memory), axis=0)
+                data_train = np.concatenate((self._data_train_inverse, self._data_memory, self._inverse_data_memory), axis=0)
+                targets_train = np.concatenate((self._targets_train_inverse, self._targets_memory, self._inverse_targets_memory), axis=0)
                 logging.info('Return data for consistency regularization. The number of exemplars is {}'.format(data_train.shape[0]))
                 return (data_train, targets_train)
 
