@@ -22,6 +22,7 @@ from models.icarl_regularization_v5 import icarl_regularization_v5
 from models.icarl_regularization_v6 import icarl_regularization_v6
 from models.icarl_regularization_v7 import icarl_regularization_v7
 from models.icarl_regularization_v8 import icarl_regularization_v8
+from models.icarl_regularization_v9 import icarl_regularization_v9
 
 def get_model(model_name, args):
     name = model_name.lower()
@@ -73,3 +74,5 @@ def get_model(model_name, args):
         return icarl_regularization_v7(args)
     elif name == 'icarl_regularization_v8':
         return icarl_regularization_v8(args)
+    elif name == 'icarl_regularization_v9':
+        return icarl_regularization_v9(args)
