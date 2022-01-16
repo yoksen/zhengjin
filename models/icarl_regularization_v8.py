@@ -55,7 +55,7 @@ batch_size = 64
 
 num_workers = 4
 duplex = True
-iterations = 2000
+iterations = 1000
 
 hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_init","weight_decay_init",\
                    "epochs","lrate", "milestones", "lrate_decay", "weight_decay","batch_size", "num_workers",\
@@ -80,7 +80,7 @@ class icarl_regularization_v8(BaseLearner):
         print('create icarl_regularization_v8!!')
         super().__init__(args)
         self._generator = Twobn_IncrementalNet(args['convnet_type'], False)
-        self._generator.update_fc(self._total_classes)
+        self._inverse_data_memory, self._inverse_targets_memory = np.array([]), np.array([])
         self._network = Twobn_IncrementalNet(args['convnet_type'], False)
         self._data_train_inverse, self._targets_train_inverse = np.array([]), np.array([])
 
@@ -91,17 +91,17 @@ class icarl_regularization_v8(BaseLearner):
         for item in hyperparameters:
             logging.info('{}: {}'.format(item, eval(item)))
     
-    def eval_task(self):
-        y_pred, y_true = self._eval_cnn(self.test_loader)
-        cnn_accy = self._evaluate(y_pred, y_true)
+    # def eval_task(self):
+    #     y_pred, y_true = self._eval_cnn(self.test_loader)
+    #     cnn_accy = self._evaluate(y_pred, y_true)
 
-        y_pred, y_true = self._eval_nme(self.test_loader, self._class_means)
-        nme_accy = self._evaluate(y_pred, y_true)
+    #     y_pred, y_true = self._eval_nme(self.test_loader, self._class_means)
+    #     nme_accy = self._evaluate(y_pred, y_true)
 
-        y_pred, y_true = self._eval_nme(self.test_loader, self._inverse_class_means)
-        inverse_nme_accy = self._evaluate(y_pred, y_true)
+    #     y_pred, y_true = self._eval_nme(self.test_loader, self._inverse_class_means)
+    #     inverse_nme_accy = self._evaluate(y_pred, y_true)
 
-        return cnn_accy, nme_accy, inverse_nme_accy
+    #     return cnn_accy, nme_accy, inverse_nme_accy
 
     def after_task(self):
         self._old_network = self._network.copy().freeze()
@@ -120,10 +120,12 @@ class icarl_regularization_v8(BaseLearner):
 
     def incremental_train(self, data_manager):
         self._cur_task += 1
-        self._total_classes = self._known_classes + data_manager.get_task_size(self._cur_task)
+        self._cur_class = data_manager.get_task_size(self._cur_task)
+        self._total_classes = self._known_classes + self._cur_class
 
         #add linear layer
-        self._generator.fc = self._generator.generate_fc(self.feature_dim, data_manager.get_task_size(self._cur_task))
+        # self._generator.fc = self._generator.generate_fc(self.feature_dim, self._cur_class)
+        self._generator.update_fc(self._total_classes)
         self._network.update_fc(self._total_classes)
         logging.info('Learning on {}-{}'.format(self._known_classes, self._total_classes))
 
