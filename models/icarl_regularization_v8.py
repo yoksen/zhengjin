@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+from numpy.core.fromnumeric import mean
 from tqdm import tqdm
 import torch
 import random
@@ -17,25 +18,11 @@ from utils.inc_net import IncrementalNet,Twobn_IncrementalNet
 from utils.toolkit import target2onehot, tensor2numpy
 from scipy.spatial.distance import cdist
 from utils.pgd_attack import create_attack
+from matplotlib import pyplot as plt
 
 EPSILON = 1e-8
 
 # CIFAR100, resnet18_2bn_cbam
-# epochs_init = 70
-# lrate_init = 1e-3
-# milestones_init = [49, 63]
-# lrate_decay_init = 0.1
-# weight_decay_init = 1e-5
-
-# epochs = 70
-# lrate = 1e-3
-# milestones = [49, 63]
-# lrate_decay = 0.1
-# weight_decay = 1e-5  # illness
-# optim_type = "adam"
-# batch_size = 64
-
-# CIFAR100, resnet32_2bn
 epochs_init = 70
 lrate_init = 1e-3
 milestones_init = [49, 63]
@@ -48,16 +35,31 @@ milestones = [49, 63]
 lrate_decay = 0.1
 weight_decay = 1e-5  # illness
 optim_type = "adam"
-batch_size = 128
-num_workers = 4
+batch_size = 64
 
+# CIFAR100, ResNet32
+# epochs_init = 160
+# lrate_init = 1.0
+# milestones_init = [100, 150, 200]
+# lrate_decay_init = 0.1
+# weight_decay_init = 1e-4
+
+
+# epochs = 160
+# lrate = 1.0
+# milestones = [100, 150, 200]
+# lrate_decay = 0.1
+# weight_decay = 1e-4
+# optim_type = "adam"
+# batch_size = 128
+
+num_workers = 4
+duplex = True
 iterations = 2000
-vector_num_per_class = 300
-lam = 1e-4
 
 hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_init","weight_decay_init",\
                    "epochs","lrate", "milestones", "lrate_decay", "weight_decay","batch_size", "num_workers",\
-                   "iterations" , "vector_num_per_class", "lam", "optim_type"]
+                   "duplex", "iterations", "optim_type"]
 
 def get_image_prior_losses(inputs_jit):
     # COMPUTE total variation regularization loss
@@ -72,36 +74,14 @@ def get_image_prior_losses(inputs_jit):
     loss_var_l1 = loss_var_l1 * 255.0
     return loss_var_l1, loss_var_l2
 
-def save_imgs(batch_img, task_id ,class_id):
 
-    toPIL = T.ToPILImage()
-    bs = batch_img.shape[0]
-    save_path_list =[]
-
-    for i in range(bs):
-        img = toPIL(batch_img[i].detach().cpu())
-        img_dir = f'./data/task_{task_id}/{class_id}/'
-
-        if not os.path.exists(img_dir):
-            try:
-                os.makedirs(img_dir)
-            except OSError as exc:
-                if exc.errno != errno.EEXIST:
-                    raise
-                pass
-        file_name = f'{i}.png'
-        save_path = os.path.join(img_dir, file_name)
-        img.save(save_path)
-        save_path_list.append(save_path)
-
-    return save_path_list
-
-class icarl_regularization_v7(BaseLearner):
+class icarl_regularization_v8(BaseLearner):
     def __init__(self, args):
-        print('create icarl_regularization_v7!!')
+        print('create icarl_regularization_v8!!')
         super().__init__(args)
-        self._inverse_data_memory, self._inverse_targets_memory = np.array([]), np.array([])
+        self._generator = Twobn_IncrementalNet(args['convnet_type'], False)
         self._network = Twobn_IncrementalNet(args['convnet_type'], False)
+        self._data_train_inverse, self._targets_train_inverse = np.array([]), np.array([])
 
         # log hyperparameter
         logging.info(50*"-")
@@ -109,33 +89,72 @@ class icarl_regularization_v7(BaseLearner):
         logging.info(50*"-")
         for item in hyperparameters:
             logging.info('{}: {}'.format(item, eval(item)))
+    
+    def eval_task(self):
+        y_pred, y_true = self._eval_cnn(self.test_loader)
+        cnn_accy = self._evaluate(y_pred, y_true)
+
+        y_pred, y_true = self._eval_nme(self.test_loader, self._class_means)
+        nme_accy = self._evaluate(y_pred, y_true)
+
+        y_pred, y_true = self._eval_nme(self.test_loader, self._inverse_class_means)
+        inverse_nme_accy = self._evaluate(y_pred, y_true)
+
+        return cnn_accy, nme_accy, inverse_nme_accy
 
     def after_task(self):
         self._old_network = self._network.copy().freeze()
         self._known_classes = self._total_classes
         logging.info('Exemplar size: {}'.format(self.exemplar_size))
 
+        # if self._cur_task <= 1:
+        #     logging.info('Save model: {}'.format(self._cur_task))
+        #     self.save_model()
+
+    def save_model(self):
+        if len(self._multiple_gpus) > 1:
+            torch.save(self._network.module.state_dict(), "./saved_model/icarl_regularization_v8_duplex_{}_{}.pt".format(duplex, self._cur_task))
+        else:
+            torch.save(self._network.state_dict(), "./saved_model/icarl_regularization_v8_duplex_{}_{}.pt".format(duplex, self._cur_task))
+
     def incremental_train(self, data_manager):
         self._cur_task += 1
         self._total_classes = self._known_classes + data_manager.get_task_size(self._cur_task)
+
         self._network.update_fc(self._total_classes)
-        # logging.info('vector_num_per_class  {}'.format(vector_num_per_class))
         logging.info('Learning on {}-{}'.format(self._known_classes, self._total_classes))
 
         # Loader
-        train_dataset = data_manager.get_dataset(np.arange(self._known_classes, self._total_classes), source='train',
-                                                 mode='train', appendent=self._get_both_memory())
-        self.train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-        test_dataset = data_manager.get_dataset(np.arange(0, self._total_classes), source='test', mode='test')
-        self.test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-        print('train_dataset data ', len(train_dataset))
+        train_new_dataset = data_manager.get_dataset(np.arange(self._known_classes, self._total_classes), source='train',
+                                                 mode='train')
+        self.train_new_loader = DataLoader(train_new_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        
+        test_new_dataset = data_manager.get_dataset(np.arange(self._known_classes, self._total_classes), source='test', mode='test')
+        self.test_new_loader = DataLoader(test_new_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
+        test_all_dataset = data_manager.get_dataset(np.arange(0, self._total_classes), source='test', mode='test')
+        self.test_loader = DataLoader(test_all_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        
         # Procedure
         if len(self._multiple_gpus) > 1:
             self._network = nn.DataParallel(self._network, self._multiple_gpus)
+        
+        if duplex:
+            self._train_generator(self.train_new_loader, self.test_new_loader)
+            self._get_train_inverse_data(data_manager=data_manager)
+            train_inverse_dataset = data_manager.get_dataset(np.arange(self._known_classes, self._total_classes), source='train',
+                                                    mode='train', appendent=self._get_train_inverse_memory())
+            self.train_inverse_loader = DataLoader(train_inverse_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+            self._train_adv(self.train_inverse_loader, self.test_loader)
+        else:
+            train_all_dataset = data_manager.get_dataset(np.arange(self._known_classes, self._total_classes), source='train',
+                                                    mode='train', appendent=self._get_memory())
+            self.train_all_loader = DataLoader(train_all_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+            self._train_adv(self.train_all_loader, self.test_loader)
 
-        self._train_adv(self.train_loader, self.test_loader)
-        self.build_rehearsal_memory(data_manager, self.samples_per_class)
+        #update memory
+        if self._total_classes != sum(data_manager._increments):
+            self.build_rehearsal_memory(data_manager, self.samples_per_class)
 
         if len(self._multiple_gpus) > 1:
             self._network = self._network.module
@@ -160,13 +179,32 @@ class icarl_regularization_v7(BaseLearner):
         
         self._update_representation_adv(train_loader, test_loader, optimizer, scheduler)
 
+    def _train_generator(self, train_loader, test_loader):
+        self._network.to(self._device)
+        if self._old_network is not None:
+            self._old_network.to(self._device)
+
+        if self._cur_task == 0:
+            if optim_type == "adam":
+                optimizer = optim.Adam(self._network.parameters(), lr=lrate_init, weight_decay=weight_decay_init)
+            else:
+                optimizer = optim.SGD(self._network.parameters(), lr=lrate_init, momentum=0.9, weight_decay=weight_decay_init)  # 1e-3
+            scheduler = optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=milestones_init, gamma=lrate_decay_init)
+        else:
+            if optim_type == "adam":
+                optimizer = optim.Adam(self._network.parameters(), lr=lrate, weight_decay=weight_decay)
+            else:
+                optimizer = optim.SGD(self._network.parameters(), lr=lrate, weight_decay=weight_decay)
+            scheduler = optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=milestones, gamma=lrate_decay)
+        
+        self._update_generator(train_loader, test_loader, optimizer, scheduler)
+
     def _update_representation_adv(self, train_loader, test_loader, optimizer, scheduler):
         if self._cur_task == 0:
             epochs_num = epochs_init
         else:
             epochs_num = epochs
         prog_bar = tqdm(range(epochs_num))
-        #data memory is also used for adversarial training
         for _, epoch in enumerate(prog_bar):
             self._network.train()
             losses = 0.
@@ -174,28 +212,26 @@ class icarl_regularization_v7(BaseLearner):
             for i, (_, inputs, targets) in enumerate(train_loader):
                 # [N,C,H,W]
                 inputs, targets = inputs.to(self._device), targets.to(self._device)
+                bs = inputs.shape[0]
+                ori_targets = targets
 
                 # [2N,class_num]
-                ret_dict, targets = self._network(inputs, targets)  # here!
+                ret_dict , targets = self._network(inputs, targets)  # here!
 
                 # [2N,class_num]
                 logits = ret_dict['logits']
-                features = ret_dict['features']
                 onehots = target2onehot(targets, self._total_classes)
 
                 if self._old_network is None:
                     loss = F.binary_cross_entropy_with_logits(logits, onehots)
                 else:
-                    old_ret_dict, _ = self._old_network(ret_dict['input'], targets)
+                    old_ret_dict ,ori_targets = self._old_network(inputs , ori_targets)
+                    old_logits  = old_ret_dict['logits'].detach()
+                    old_onehots = torch.sigmoid(old_logits)
                     new_onehots = onehots.clone()
-                    new_onehots[:, :self._known_classes] = torch.sigmoid(old_ret_dict['logits'].detach())
-
+                    new_onehots[:bs, :self._known_classes] = old_onehots
+                    new_onehots[bs:, :self._known_classes] = old_onehots
                     loss = F.binary_cross_entropy_with_logits(logits, new_onehots)
-
-                    # old_features = old_ret_dict['features'].detach()
-                    # loss_kd = self._IRD_loss(old_features, features)
-
-                    # loss += loss + lam * loss_kd
 
                 optimizer.zero_grad()
                 loss.backward()
@@ -203,7 +239,6 @@ class icarl_regularization_v7(BaseLearner):
                 losses += loss.item()
 
                 # acc
-                # this acc measure all data(clean and adversarial)
                 _, preds = torch.max(logits, dim=1)
                 correct += preds.eq(targets.expand_as(preds)).cpu().sum()
                 total += len(targets)
@@ -217,16 +252,48 @@ class icarl_regularization_v7(BaseLearner):
 
         logging.info(info)
 
-    # Polymorphism blow
-    def _get_both_memory(self):
-        if len(self._data_memory) == 0:
-            return None
+    def _update_generator(self, train_loader, test_loader, optimizer, scheduler):
+        if self._cur_task == 0:
+            epochs_num = epochs_init
         else:
-            _data_ = np.concatenate( (self._data_memory, self._inverse_data_memory) )
-            _targets_ = np.concatenate( (self._targets_memory , self._inverse_targets_memory) )
+            epochs_num = epochs
+        prog_bar = tqdm(range(epochs_num))
+        for _, epoch in enumerate(prog_bar):
+            self._generator.train()
+            losses = 0.
+            correct, total = 0, 0
+            for i, (_, inputs, targets) in enumerate(train_loader):
+                # [N,C,H,W]
+                inputs, targets = inputs.to(self._device), targets.to(self._device)
 
-            return (_data_ , _targets_)
+                # [2N,class_num]
+                ret_dict , targets = self._generator(inputs, targets)  # here!
 
+                # [2N,class_num]
+                logits = ret_dict['logits']
+                onehots = target2onehot(targets, self._total_classes)
+
+                loss = F.binary_cross_entropy_with_logits(logits, onehots)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                losses += loss.item()
+
+                # acc
+                _, preds = torch.max(logits, dim=1)
+                correct += preds.eq(targets.expand_as(preds)).cpu().sum()
+                total += len(targets)
+
+            scheduler.step()
+            train_acc = np.around(tensor2numpy(correct) * 100 / total, decimals=2)
+            test_acc = self._compute_accuracy(self._generator, test_loader)
+            info = 'Task {}, Epoch {}/{} => Loss {:.3f}, Train_accy {:.2f}, Test_accy {:.2f}'.format(
+                self._cur_task, epoch + 1, epochs_num, losses / len(train_loader), train_acc, test_acc)
+            prog_bar.set_description(info)
+
+        logging.info(info)
+    
+    # Polymorphism blow
     def _compute_accuracy(self, model, loader):
         model.eval()
         correct, total = 0, 0
@@ -244,6 +311,9 @@ class icarl_regularization_v7(BaseLearner):
         return np.around(tensor2numpy(correct)*100 / total, decimals=2)
 
     def _eval_cnn(self, loader):
+        #my add
+        # self.topk = 1
+
         self._network.eval()
         y_pred, y_true = [], []
         for _, (_, inputs, targets) in enumerate(loader):
@@ -289,7 +359,8 @@ class icarl_regularization_v7(BaseLearner):
             targets.append(_targets)
 
         return np.concatenate(vectors), np.concatenate(targets)
-
+    
+    #reduce_exemplar and recalculate the mean
     def _reduce_exemplar(self, data_manager, m):
         logging.info('Reducing exemplars...({} per classes)'.format(m))
         dummy_data, dummy_targets = copy.deepcopy(self._data_memory), copy.deepcopy(self._targets_memory)
@@ -483,36 +554,45 @@ class icarl_regularization_v7(BaseLearner):
         logging.info(f'Constructing exemplars finish! data_memory size {self._data_memory.shape[0]},inverse_data_memory size {self._inverse_data_memory.shape[0]}')
         self._class_means = _class_means
 
-    def _IRD_loss(self, old_features, features):
-        # IRD (current)
-        current_temp = 0.2
-        past_temp = 0.01
+    def _get_train_inverse_data(self, data_manager):
+        logging.info('Constructing inverse exemplars for new classes.')
+        # get inverse image
+        exemplar_dset = data_manager.get_dataset(np.arange(self._known_classes, self._total_classes), source='train', mode='test',
+                                                    appendent=[])
+        exemplar_loader = DataLoader(exemplar_dset, batch_size=batch_size, shuffle=False, num_workers=4)
 
-        cur_sim = torch.div(torch.matmul(features, features.T), current_temp)
-        logits_mask = torch.scatter(
-            torch.ones_like(cur_sim),
-            1,
-            torch.arange(cur_sim.size(0)).view(-1, 1).cuda(non_blocking=True),
-            0
-        )
-        logits_max1, _ = torch.max(cur_sim * logits_mask, dim=1, keepdim=True)
-        cur_sim = cur_sim - logits_max1.detach()
-        row_size = cur_sim.size(0)
-        logits1 = torch.exp(cur_sim[logits_mask.bool()].view(row_size, -1)) / torch.exp(cur_sim[logits_mask.bool()].view(row_size, -1)).sum(dim=1, keepdim=True)
+        inverse_images_ = []
+        inverse_targets_ = []         
 
+        count = 0
+        for _ , images, targets in exemplar_loader:
+            #use generator to generate images
+            inverse_images_batch = self.rebuild_image_fv_bn(images.to(self._device), self._generator.convnet, randstart=True)
+            inverse_images_batch = inverse_images_batch.detach().cpu().numpy().transpose(0,2,3,1)
+            inverse_images_batch = (inverse_images_batch*255).astype(np.uint8)
+            inverse_images_.extend(inverse_images_batch)
+            inverse_targets_.extend(targets)
+            count += 1
 
-        past_sim = torch.div(torch.matmul(old_features, old_features.T), past_temp)
-        logits_max2, _ = torch.max(past_sim*logits_mask, dim=1, keepdim=True)
-        past_sim = past_sim - logits_max2.detach()
-        logits2 = torch.exp(past_sim[logits_mask.bool()].view(row_size, -1)) /  torch.exp(past_sim[logits_mask.bool()].view(row_size, -1)).sum(dim=1, keepdim=True)
+        inverse_images_ = np.array(inverse_images_)
+        inverse_targets_ = np.array(inverse_targets_)
 
-        loss_distill = (-logits2 * torch.log(logits1)).sum(1).mean()
-        return loss_distill
+        self._data_train_inverse = inverse_images_
+        self._targets_train_inverse = inverse_targets_
+        logging.info('Finishing constructing inverse exemplars for new classes. The number of exemplars is {}'.format(self._data_train_inverse.shape[0]))
 
-    def _feature_L2_loss(self, old_features, features):
-        loss_kd = torch.dist(features, old_features, 2)
-
-        return loss_kd
+    def _get_train_inverse_memory(self):
+        if len(self._data_train_inverse) == 0:
+            return None
+        else:
+            if len(self._data_memory) == 0:
+                logging.info('Return data for consistency regularization. The number of exemplars is {}'.format(self._data_train_inverse.shape[0]))
+                return (self._data_train_inverse, self._targets_train_inverse)
+            else:
+                data_train = np.concatenate((self._data_train_inverse, self._data_memory), axis=0)
+                targets_train = np.concatenate((self._targets_train_inverse, self._targets_memory), axis=0)
+                logging.info('Return data for consistency regularization. The number of exemplars is {}'.format(data_train.shape[0]))
+                return (data_train, targets_train)
 
     def rebuild_image_fv_bn(self,image, model, randstart=True):
         model.eval()
@@ -528,6 +608,8 @@ class icarl_regularization_v7(BaseLearner):
             rnd_fv = model.fv(normalize(x))
             return torch.div(torch.norm(rnd_fv - ori_fv, dim=1), torch.norm(ori_fv, dim=1)).mean()
 
+
+
         if randstart == True:
             if len(image.shape) == 3:
                 rand_x = torch.randn_like(image.unsqueeze(0), requires_grad=True, device=self._device)
@@ -536,10 +618,7 @@ class icarl_regularization_v7(BaseLearner):
 
 
         start_time = time.time()
-        # iterations = 2000
-        # lr = 0.01
         lr = 0.01
-        # lr_scheduler = lr_cosine_policy(lr, 100, iterations_per_layer)
         r_feature = 1e-3
 
         lim_0 = 10
@@ -553,16 +632,10 @@ class icarl_regularization_v7(BaseLearner):
         best_img = None
         optimizer = optim.Adam([rand_x], lr=lr, betas=[0.5, 0.9], eps=1e-8)
         for i in range(iterations):
-            # learning rate scheduling
-            # lr_scheduler(optimizer, i, i)
-
             # roll
             off1 = random.randint(-lim_0, lim_0)
             off2 = random.randint(-lim_1, lim_1)
             inputs_jit = torch.roll(rand_x, shifts=(off1, off2), dims=(2, 3))
-
-            # do not roll
-            # inputs_jit = rand_x
 
             # R_prior losses
             loss_var_l1, loss_var_l2 = get_image_prior_losses(inputs_jit)
@@ -572,8 +645,6 @@ class icarl_regularization_v7(BaseLearner):
 
             # main loss
             main_loss = criterion(inputs_jit, torch.tensor([0]))
-
-            # bn loss
 
             # bn loss
             if iterations == 600:
@@ -591,8 +662,6 @@ class icarl_regularization_v7(BaseLearner):
                 elif i <= 2000:
                     r_feature = 1e-2
 
-
-
             rescale = [first_bn_multiplier] + [1. for _ in range(len(model.loss_r_feature_layers) - 1)]
             loss_r_feature = sum(
                 [rescale[idx] * item.r_feature for idx, item in enumerate(model.loss_r_feature_layers)])
@@ -603,9 +672,13 @@ class icarl_regularization_v7(BaseLearner):
 
             optimizer.step()
             rand_x.data = torch.clamp(rand_x.data, 0, 1)
+            # if (i+1) % 100 == 0 :
+            #     print(i, 'rand_strat ', randstart)
+            #     print(
+            #         f'loss {loss:.3f} , fv_loss {main_loss:.3f} , loss_r_fea {loss_r_feature:.3f} , loss_l2 {loss_l2:.3f} , loss_var_l2 {loss_var_l2:.3f}')
 
             best_img = rand_x.clone().detach()
-            
+
         print("inverse --- %s seconds ---" % (time.time() - start_time))
         model.remove_hook()
         return best_img

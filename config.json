@@ -7,8 +7,8 @@
     "shuffle": true,
     "init_cls": 5,
     "increment": 5,
-    "model_name": "icarl_regularization_v7",
-    "convnet_type": "resnet32_2bn",
+    "model_name": "icarl_regularization_v8",
+    "convnet_type": "resnet18_2bn_cbam",
     "device": ["0"],
     "seed": [32, 40, 50, 60, 100],
     "pretrained":false
