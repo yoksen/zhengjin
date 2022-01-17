@@ -509,20 +509,6 @@ class icarl_regularization_v9(BaseLearner):
 
             selected_exemplars = np.array(selected_exemplars)
             exemplar_targets = np.full(m, class_idx)
-
-            # get inverse image from the selected_exemplars_to_be_inv
-
-            inverse_images_ = []
-            for _ , images , _ in class_loader:
-                inverse_images_batch = self.rebuild_image_fv_bn(images.to(self._device), self._network.convnet, randstart=True)
-                inverse_images_batch = inverse_images_batch.detach().cpu().numpy().transpose(0,2,3,1)
-                inverse_images_batch = (inverse_images_batch*255).astype(np.uint8)
-
-                inverse_images_.extend(inverse_images_batch)
-
-            inverse_images_ = np.array(inverse_images_)
-            inverse_targets = np.full(inverse_images_.shape[0], class_idx)
-
             # Exemplar mean
             exemplar_dset = data_manager.get_dataset([], source='train', mode='test',
                                                      appendent=(selected_exemplars, exemplar_targets))
@@ -534,6 +520,17 @@ class icarl_regularization_v9(BaseLearner):
 
             _class_means[class_idx, :] = mean
 
+            # get inverse image from the selected_exemplars_to_be_inv
+            inverse_images_ = []
+            for _ , images , _ in exemplar_loader:
+                inverse_images_batch = self.rebuild_image_fv_bn(images.to(self._device), self._network.convnet, randstart=True)
+                inverse_images_batch = inverse_images_batch.detach().cpu().numpy().transpose(0,2,3,1)
+                inverse_images_batch = (inverse_images_batch*255).astype(np.uint8)
+
+                inverse_images_.extend(inverse_images_batch)
+
+            inverse_images_ = np.array(inverse_images_)
+            inverse_targets = np.full(inverse_images_.shape[0], class_idx)
 
             # add to memory
             self._data_memory = np.concatenate((self._data_memory, selected_exemplars)) if len(self._data_memory) != 0 \
