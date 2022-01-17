@@ -23,13 +23,13 @@ from matplotlib import pyplot as plt
 EPSILON = 1e-8
 
 # CIFAR100, resnet18_2bn_cbam
-epochs_init = 70
+epochs_init = 2
 lrate_init = 1e-3
 milestones_init = [49, 63]
 lrate_decay_init = 0.1
 weight_decay_init = 1e-5
 
-epochs = 70
+epochs = 2
 lrate = 1e-3
 milestones = [49, 63]
 lrate_decay = 0.1
@@ -136,6 +136,7 @@ class icarl_regularization_v9(BaseLearner):
         if duplex:
             self._train_generator(self.train_new_loader, self.test_new_loader)
             self._get_train_inverse_data(data_manager=data_manager)
+            self._eval_generator(data_manager=data_manager)
             train_inverse_dataset = data_manager.get_dataset(np.arange(self._known_classes, self._total_classes), source='train',
                                                     mode='train', appendent=self._get_train_inverse_memory())
             self.train_inverse_loader = DataLoader(train_inverse_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
@@ -153,6 +154,50 @@ class icarl_regularization_v9(BaseLearner):
         if len(self._multiple_gpus) > 1:
             self._network = self._network.module
             self._generator = self._generator.module
+
+    def _eval_generator(self, data_manager):
+        train_dataset = data_manager.get_dataset(np.arange(self._known_classes, self._total_classes), source='train', mode='train')
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+
+        self._generator.eval()
+        correct, total = 0, 0
+        for _, (_, inputs, targets) in enumerate(train_loader):
+            inputs = inputs.to(self._device)
+            targets = targets.to(self._device)
+
+            with torch.no_grad():
+                ret_dict, targets = self._network(inputs, targets)
+                outputs = ret_dict['logits']
+            
+            _, preds = torch.max(outputs, dim=1)
+            correct += preds.eq(targets.expand_as(preds)).cpu().sum()
+            total += len(targets)
+        
+        train_acc = np.around(tensor2numpy(correct) * 100 / total, decimals=2)
+        
+        info = 'Generator on original training data Train_accy {:.2f}'.format(train_acc)
+        logging.info(info)
+
+        train_dataset = data_manager.get_dataset([], source='train', mode='train', appendent=(self._data_train_inverse, self._targets_train_inverse))
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+
+        correct, total = 0, 0
+        for _, (_, inputs, targets) in enumerate(train_loader):
+            inputs = inputs.to(self._device)
+            targets = targets.to(self._device)
+
+            with torch.no_grad():
+                ret_dict, targets = self._network(inputs, targets)
+                outputs = ret_dict['logits']
+            
+            _, preds = torch.max(outputs, dim=1)
+            correct += preds.eq(targets.expand_as(preds)).cpu().sum()
+            total += len(targets)
+        
+        train_acc = np.around(tensor2numpy(correct) * 100 / total, decimals=2)
+        
+        info = 'Generator on inverse training data Train_accy {:.2f}'.format(train_acc)
+        logging.info(info)
 
     def _train_adv(self, train_loader, test_loader):
         self._network.to(self._device)
