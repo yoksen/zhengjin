@@ -26,36 +26,36 @@ EPSILON = 1e-8
 
 
 # CIFAR100, resnet18_2bn_cbam
-# epochs_init = 70
-# lrate_init = 1e-3
-# milestones_init = [49, 63]
-# lrate_decay_init = 0.1
-# weight_decay_init = 1e-5
-
-# epochs = 70
-# lrate = 1e-3
-# milestones = [49, 63]
-# lrate_decay = 0.1
-# weight_decay = 1e-5  # illness
-# optim_type = "adam"
-# batch_size = 64
-
-# CIFAR100, resnet32_2bn
 epochs_init = 70
-# lrate_init = 1e-2
 lrate_init = 1e-3
 milestones_init = [49, 63]
 lrate_decay_init = 0.1
 weight_decay_init = 1e-5
 
 epochs = 70
-# lrate = 1e-2
 lrate = 1e-3
 milestones = [49, 63]
 lrate_decay = 0.1
 weight_decay = 1e-5  # illness
 optim_type = "adam"
 batch_size = 64
+
+# CIFAR100, resnet32_2bn
+# epochs_init = 70
+# # lrate_init = 1e-2
+# lrate_init = 1e-3
+# milestones_init = [49, 63]
+# lrate_decay_init = 0.1
+# weight_decay_init = 1e-5
+
+# epochs = 70
+# # lrate = 1e-2
+# lrate = 1e-3
+# milestones = [49, 63]
+# lrate_decay = 0.1
+# weight_decay = 1e-5  # illness
+# optim_type = "adam"
+# batch_size = 64
 
 num_workers = 4
 

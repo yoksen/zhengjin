@@ -4,6 +4,8 @@ import os
 import datetime
 import sys
 import warnings
+import torch.multiprocessing
+torch.multiprocessing.set_sharing_strategy('file_system')
 warnings.filterwarnings("ignore")
 import logging
 from trainer import train

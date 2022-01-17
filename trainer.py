@@ -33,7 +33,7 @@ def _train(args):
         logging.info('Trainable params: {}'.format(count_parameters(model._network, True)))
         model.incremental_train(data_manager)
 
-        if args["model_name"] == "icarl_regularization_v4":
+        if args["model_name"] in ["icarl_regularization_v4", "icarl_regularization_v10"] :
             cnn_accy, nme_accy, inverse_nme_accy = model.eval_task()
         else:
             cnn_accy, nme_accy = model.eval_task()
