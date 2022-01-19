@@ -35,53 +35,56 @@ def _train(args):
 
         if args["model_name"] in ["icarl_regularization_v4", "icarl_regularization_v10"] :
             cnn_accy, nme_accy, inverse_nme_accy = model.eval_task()
+        elif args["model_name"] == "multi_bn":
+            pass
         else:
             cnn_accy, nme_accy = model.eval_task()
         model.after_task()
 
-        if nme_accy is not None and inverse_nme_accy is not None:
-            logging.info('CNN: {}'.format(cnn_accy['grouped']))
-            logging.info('NME: {}'.format(nme_accy['grouped']))
-            logging.info('Inverse_NME: {}'.format(inverse_nme_accy['grouped']))
+        if args["model_name"] != "multi_bn":
+            if nme_accy is not None and inverse_nme_accy is not None:
+                logging.info('CNN: {}'.format(cnn_accy['grouped']))
+                logging.info('NME: {}'.format(nme_accy['grouped']))
+                logging.info('Inverse_NME: {}'.format(inverse_nme_accy['grouped']))
 
-            cnn_curve['top1'].append(cnn_accy['top1'])
-            cnn_curve['top5'].append(cnn_accy['top5'])
+                cnn_curve['top1'].append(cnn_accy['top1'])
+                cnn_curve['top5'].append(cnn_accy['top5'])
 
-            nme_curve['top1'].append(nme_accy['top1'])
-            nme_curve['top5'].append(nme_accy['top5'])
+                nme_curve['top1'].append(nme_accy['top1'])
+                nme_curve['top5'].append(nme_accy['top5'])
 
-            inverse_nme_curve['top1'].append(inverse_nme_accy['top1'])
-            inverse_nme_curve['top5'].append(inverse_nme_accy['top5'])
+                inverse_nme_curve['top1'].append(inverse_nme_accy['top1'])
+                inverse_nme_curve['top5'].append(inverse_nme_accy['top5'])
 
-            logging.info('CNN top1 curve: {}'.format(cnn_curve['top1']))
-            logging.info('CNN top5 curve: {}'.format(cnn_curve['top5']))
-            logging.info('NME top1 curve: {}'.format(nme_curve['top1']))
-            logging.info('NME top5 curve: {}\n'.format(nme_curve['top5']))
-            logging.info('Inverse NME top1 curve: {}'.format(inverse_nme_curve['top1']))
-            logging.info('Inverse NME top5 curve: {}\n'.format(inverse_nme_curve['top5']))
-        elif nme_accy is not None:
-            logging.info('CNN: {}'.format(cnn_accy['grouped']))
-            logging.info('NME: {}'.format(nme_accy['grouped']))
+                logging.info('CNN top1 curve: {}'.format(cnn_curve['top1']))
+                logging.info('CNN top5 curve: {}'.format(cnn_curve['top5']))
+                logging.info('NME top1 curve: {}'.format(nme_curve['top1']))
+                logging.info('NME top5 curve: {}\n'.format(nme_curve['top5']))
+                logging.info('Inverse NME top1 curve: {}'.format(inverse_nme_curve['top1']))
+                logging.info('Inverse NME top5 curve: {}\n'.format(inverse_nme_curve['top5']))
+            elif nme_accy is not None:
+                logging.info('CNN: {}'.format(cnn_accy['grouped']))
+                logging.info('NME: {}'.format(nme_accy['grouped']))
 
-            cnn_curve['top1'].append(cnn_accy['top1'])
-            cnn_curve['top5'].append(cnn_accy['top5'])
+                cnn_curve['top1'].append(cnn_accy['top1'])
+                cnn_curve['top5'].append(cnn_accy['top5'])
 
-            nme_curve['top1'].append(nme_accy['top1'])
-            nme_curve['top5'].append(nme_accy['top5'])
+                nme_curve['top1'].append(nme_accy['top1'])
+                nme_curve['top5'].append(nme_accy['top5'])
 
-            logging.info('CNN top1 curve: {}'.format(cnn_curve['top1']))
-            logging.info('CNN top5 curve: {}'.format(cnn_curve['top5']))
-            logging.info('NME top1 curve: {}'.format(nme_curve['top1']))
-            logging.info('NME top5 curve: {}\n'.format(nme_curve['top5']))
-        else:
-            logging.info('No NME accuracy.')
-            logging.info('CNN: {}'.format(cnn_accy['grouped']))
+                logging.info('CNN top1 curve: {}'.format(cnn_curve['top1']))
+                logging.info('CNN top5 curve: {}'.format(cnn_curve['top5']))
+                logging.info('NME top1 curve: {}'.format(nme_curve['top1']))
+                logging.info('NME top5 curve: {}\n'.format(nme_curve['top5']))
+            else:
+                logging.info('No NME accuracy.')
+                logging.info('CNN: {}'.format(cnn_accy['grouped']))
 
-            cnn_curve['top1'].append(cnn_accy['top1'])
-            cnn_curve['top5'].append(cnn_accy['top5'])
+                cnn_curve['top1'].append(cnn_accy['top1'])
+                cnn_curve['top5'].append(cnn_accy['top5'])
 
-            logging.info('CNN top1 curve: {}'.format(cnn_curve['top1']))
-            logging.info('CNN top5 curve: {}\n'.format(cnn_curve['top5']))
+                logging.info('CNN top1 curve: {}'.format(cnn_curve['top1']))
+                logging.info('CNN top5 curve: {}\n'.format(cnn_curve['top5']))
 
 
 def _set_device(args):
