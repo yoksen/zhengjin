@@ -147,11 +147,12 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, num_classes=100):
+    def __init__(self, block, layers, num_classes=100, normed=False):
         self.inplanes = 64
         super(ResNet, self).__init__()
 
         self.norm = Normalization([0.5071, 0.4867, 0.4408], [0.2675, 0.2565, 0.2761])
+        self.normed = normed
 
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1,
                                bias=False)
@@ -190,8 +191,8 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x, norm=False):
-        if norm:
+    def forward(self, x):
+        if self.normed:
             x = self.norm(x)
         x = self.conv1(x)
         x = self.bn1(x)
@@ -210,12 +211,12 @@ class ResNet(nn.Module):
         }
 
 
-def resnet18_cbam(pretrained=False, **kwargs):
+def resnet18_cbam(pretrained=False, normed=False, **kwargs):
     """Constructs a ResNet-18 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
+    model = ResNet(BasicBlock, [2, 2, 2, 2], normed=normed, **kwargs)
     if pretrained:
         pretrained_state_dict = model_zoo.load_url(model_urls['resnet18'])
         now_state_dict        = model.state_dict()

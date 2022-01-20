@@ -8,7 +8,7 @@ import os
 import time
 import errno
 import copy
-from torch import nn
+from torch import nn, norm
 from torch import optim
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
@@ -24,16 +24,16 @@ from convs.cifar_adv_resnet import resnet32, resnet18, LinfPGD
 EPSILON = 1e-8
 
 # CIFAR100, resnet18_2bn_cbam
-epochs_init = 200
-# epochs_init = 2
+# epochs_init = 200
+epochs_init = 2
 lrate_init = 1e-1
 milestones_init = [100, 150]
 lrate_decay_init = 0.1
 weight_decay_init = 2e-4
 generator_type = "resnet18"
 
-epochs = 70
-# epochs = 2
+# epochs = 70
+epochs = 2
 lrate = 1e-3
 milestones = [49, 63]
 lrate_decay = 0.1
@@ -59,7 +59,8 @@ batch_size = 64
 # vector_num_per_class = 300
 
 num_workers = 4
-iterations = 2000
+# iterations = 2000
+iterations = 20
 
 hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_init","weight_decay_init",\
                    "epochs","lrate", "milestones", "lrate_decay", "weight_decay","batch_size", "num_workers",\
@@ -91,7 +92,7 @@ class icarl_generator_fixed(BaseLearner):
         
         self._init_cls = args["init_cls"]
         self._inverse_data_memory, self._inverse_targets_memory = np.array([]), np.array([])
-        self._network = IncrementalNet(args['convnet_type'], False)
+        self._network = IncrementalNet(args['convnet_type'], False, normed=True)
 
         # log hyperparameter
         logging.info(50*"-")

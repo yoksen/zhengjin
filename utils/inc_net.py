@@ -1,6 +1,6 @@
 import copy
 import torch
-from torch import nn
+from torch import nn, norm
 from convs.cifar_resnet import resnet32
 from convs.resnet import resnet18, resnet34, resnet50
 from convs.ucir_cifar_resnet import resnet32 as cosine_resnet32
@@ -14,7 +14,7 @@ import convs.twobn_resnet as twobn_resnet
 import convs.cifar_twobn_resnet as cifar_twobn_resnet
 import convs.cifar_multibn_resnet as cifar_multibn_resnet
 
-def get_convnet(convnet_type, pretrained=False):
+def get_convnet(convnet_type, pretrained=False, normed=False):
     name = convnet_type.lower()
 
     if name == 'resnet32':
@@ -52,7 +52,7 @@ def get_convnet(convnet_type, pretrained=False):
         print('creat resnet18_2bn_cbam!')
         return net
     elif name == 'resnet18_cbam':
-        net = resnet18_cbam()
+        net = resnet18_cbam(normed=normed)
         print('creat resnet18_cbam!')
         return net
     else:
@@ -61,10 +61,10 @@ def get_convnet(convnet_type, pretrained=False):
 
 class BaseNet(nn.Module):
 
-    def __init__(self, convnet_type, pretrained):
+    def __init__(self, convnet_type, pretrained, normed=False):
         super(BaseNet, self).__init__()
 
-        self.convnet = get_convnet(convnet_type, pretrained)
+        self.convnet = get_convnet(convnet_type, pretrained, normed)
         self.fc = None
 
     @property
@@ -107,8 +107,8 @@ class BaseNet(nn.Module):
 
 class IncrementalNet(BaseNet):
 
-    def __init__(self, convnet_type, pretrained, gradcam=False):
-        super().__init__(convnet_type, pretrained)
+    def __init__(self, convnet_type, pretrained, gradcam=False, normed=False):
+        super().__init__(convnet_type, pretrained, normed)
         self.gradcam = gradcam
         if hasattr(self, 'gradcam') and self.gradcam:
             self._gradcam_hooks = [None, None]
