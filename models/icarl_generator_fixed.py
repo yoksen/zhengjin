@@ -33,8 +33,8 @@ lrate_decay_init = 0.1
 weight_decay_init = 2e-4
 generator_type = "resnet18"
 
-# epochs = 70
-epochs = 2
+epochs = 70
+# epochs = 2
 lrate = 1e-3
 milestones = [49, 63]
 lrate_decay = 0.1
@@ -60,7 +60,7 @@ batch_size = 64
 # vector_num_per_class = 300
 
 num_workers = 4
-iterations = 20
+iterations = 2000
 # iterations = 20
 
 hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_init","weight_decay_init",\
@@ -88,16 +88,29 @@ class icarl_generator_fixed(BaseLearner):
             # self._generator = resnet18(args["init_cls"])
             self._generator = PreActResNet18(args["init_cls"])
             
-            pretrained_dict=torch.load("/data/junjie/code/zhengjin/pretrained_robust_model/cifar100_linf_eps8.pth")
+            pretrained_dict=torch.load("/home/20/junjie/code/zhengjin/pretrained_robust_model/cifar100_linf_eps8.pth")
             model_dict=self._generator.state_dict()
-            pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+            pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict and "linear" not in k}
             model_dict.update(pretrained_dict)
             self._generator.load_state_dict(model_dict)
+            self._generator.to(self._device)
+
+            logging.info("Successfully load pretrained generator!")
 
             self._attacker = LinfPGD(self._generator, epsilon=8/255, step=2/255, iterations=7, random_start=True)
         else:
             # self._generator = resnet32(args["init_cls"])
             self._generator = PreActResNet18(args["init_cls"])
+
+            pretrained_dict=torch.load("/home/20/junjie/code/zhengjin/pretrained_robust_model/cifar100_linf_eps8.pth")
+            model_dict=self._generator.state_dict()
+            pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict and "linear" not in k}
+            model_dict.update(pretrained_dict)
+            self._generator.load_state_dict(model_dict)
+            self._generator.to(self._device)
+
+            logging.info("Successfully load pretrained generator!")
+
             self._attacker = LinfPGD(self._generator, epsilon=8/255, step=2/255, iterations=7, random_start=True)
         
         self._init_cls = args["init_cls"]
@@ -287,8 +300,6 @@ class icarl_generator_fixed(BaseLearner):
 
             _inverse_class_means[class_idx, :] = inverse_mean
 
-
-
         # Construct exemplars for new classes and calculate the means
         for class_idx in range(self._known_classes, self._total_classes):
             data, targets, class_dset = data_manager.get_dataset(np.arange(class_idx, class_idx+1), source='train',
@@ -377,9 +388,9 @@ class icarl_generator_fixed(BaseLearner):
 
         if randstart == True:
             if len(image.shape) == 3:
-                rand_x = torch.randn_like(image.unsqueeze(0), requires_grad=True, device=self._device)
+                rand_x = torch.rand_like(image.unsqueeze(0), requires_grad=True, device=self._device)
             else:
-                rand_x = torch.randn_like(image, requires_grad=True, device=self._device)
+                rand_x = torch.rand_like(image, requires_grad=True, device=self._device)
 
 
         start_time = time.time()

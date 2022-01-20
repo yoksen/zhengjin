@@ -18,11 +18,12 @@ class Normalization(nn.Module):
             std = [.1] * n_channels
         self.mean = torch.tensor(list(mean)).reshape((1, self.n_channels, 1, 1))
         self.std = torch.tensor(list(std)).reshape((1, self.n_channels, 1, 1))
-        self.mean = nn.Parameter(self.mean)
-        self.std = nn.Parameter(self.std)
+        self.mean = nn.Parameter(self.mean, requires_grad=False)
+        self.std = nn.Parameter(self.std, requires_grad=False)
     
     def forward(self, x):
         # print(self.mean.device)
+        # print(x.device)
         y = (x - self.mean / self.std)
         return y
 
@@ -123,6 +124,8 @@ class PreActResNet(nn.Module):
         self.bn = nn.BatchNorm2d(512 * block.expansion)
         self.linear = nn.Linear(512*block.expansion, num_classes)
 
+        self.loss_r_feature_layers = []
+
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1]*(num_blocks-1)
         layers = []
@@ -148,17 +151,16 @@ class PreActResNet(nn.Module):
     def fv(self, x):
         if self.normed:
             x = self.norm(x)
-        x_0 = self.conv_1_3x3(x)  # [bs, 16, 32, 32]
-        x_0 = F.relu(self.bn_1(x_0), inplace=True)
+        out = self.conv1(x)
+        out = self.layer1(out)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)
+        out = F.relu(self.bn(out))
+        out = F.avg_pool2d(out, 4)
+        out = out.view(out.size(0), -1)
 
-        x_1 = self.stage_1(x_0)  # [bs, 16, 32, 32]
-        x_2 = self.stage_2(x_1)  # [bs, 32, 16, 16]
-        x_3 = self.stage_3(x_2)  # [bs, 64, 8, 8]
-
-        pooled = self.avgpool(x_3)  # [bs, 64, 1, 1]
-        features = pooled.view(pooled.size(0), -1)  # [bs, 64]
-
-        return features
+        return out
     
     def set_hook(self):
         print("register_hook")
@@ -169,7 +171,6 @@ class PreActResNet(nn.Module):
                 for module in block.modules():
                     if isinstance(module, nn.BatchNorm2d):
                         self.loss_r_feature_layers.append(DeepInversionFeatureHook(module))
-
 
     def remove_hook(self):
         print('remove hook!')

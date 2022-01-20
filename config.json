@@ -1,6 +1,6 @@
 {
     "prefix": "reproduce",
-    "dataset": "cifar100",
+    "dataset": "cifar100_norm",
     "memory_size": 2000,
     "memory_per_class": 20,
     "fixed_memory": true,
