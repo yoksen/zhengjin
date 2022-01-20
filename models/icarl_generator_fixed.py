@@ -20,12 +20,13 @@ from scipy.spatial.distance import cdist
 from utils.pgd_attack import create_attack
 from matplotlib import pyplot as plt
 from convs.cifar_adv_resnet import resnet32, resnet18, LinfPGD
+from convs.preactresnet import PreActResNet18
 
 EPSILON = 1e-8
 
 # CIFAR100, resnet18_2bn_cbam
-# epochs_init = 200
-epochs_init = 2
+epochs_init = 200
+# epochs_init = 2
 lrate_init = 1e-1
 milestones_init = [100, 150]
 lrate_decay_init = 0.1
@@ -59,8 +60,8 @@ batch_size = 64
 # vector_num_per_class = 300
 
 num_workers = 4
-# iterations = 2000
 iterations = 20
+# iterations = 20
 
 hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_init","weight_decay_init",\
                    "epochs","lrate", "milestones", "lrate_decay", "weight_decay","batch_size", "num_workers",\
@@ -84,10 +85,19 @@ class icarl_generator_fixed(BaseLearner):
         print('create icarl_generator_fixed!!')
         super().__init__(args)
         if generator_type == "resnet18":
-            self._generator = resnet18(args["init_cls"])
+            # self._generator = resnet18(args["init_cls"])
+            self._generator = PreActResNet18(args["init_cls"])
+            
+            pretrained_dict=torch.load("/data/junjie/code/zhengjin/pretrained_robust_model/cifar100_linf_eps8.pth")
+            model_dict=self._generator.state_dict()
+            pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+            model_dict.update(pretrained_dict)
+            self._generator.load_state_dict(model_dict)
+
             self._attacker = LinfPGD(self._generator, epsilon=8/255, step=2/255, iterations=7, random_start=True)
         else:
-            self._generator = resnet32(args["init_cls"])
+            # self._generator = resnet32(args["init_cls"])
+            self._generator = PreActResNet18(args["init_cls"])
             self._attacker = LinfPGD(self._generator, epsilon=8/255, step=2/255, iterations=7, random_start=True)
         
         self._init_cls = args["init_cls"]
@@ -141,7 +151,7 @@ class icarl_generator_fixed(BaseLearner):
             self._generator = nn.DataParallel(self._generator, self._multiple_gpus)
         
         if self._cur_task == 0:
-            self._train_generator(self.train_loader, self.test_loader)
+            # self._train_generator(self.train_loader, self.test_loader)
             self._train_adv(self.train_loader, self.test_loader)
         else:
             self._train_adv(self.train_loader, self.test_loader)

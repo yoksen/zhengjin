@@ -409,3 +409,9 @@ def resnet18(num_classes=100):
     """Constructs a ResNet-18 model for CIFAR-100."""
     conv_net = ResNet(ResNetBasicblock, [2, 2, 2, 2], num_classes)
     return conv_net
+
+
+if __name__ == "__main__":
+    net = ResNet(ResNetBasicblock, [2, 2, 2, 2], 100)
+    for k, v in net.state_dict().items():
+        print(k)
