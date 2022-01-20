@@ -13,37 +13,37 @@ from utils.toolkit import target2onehot, tensor2numpy
 EPSILON = 1e-8
 
 # CIFAR100, resnet18_cbam
-# epochs_init = 70
-# lrate_init = 1e-3
-# milestones_init = [49, 63]
-# lrate_decay_init = 0.1
-# weight_decay_init = 1e-5
-
-
-# epochs = 70
-# lrate = 1e-3
-# milestones = [49, 63]
-# lrate_decay = 0.1
-# weight_decay = 1e-5  # illness
-# optim_type = "adam"
-# batch_size = 64
-
-
-# CIFAR100, ResNet32
 epochs_init = 70
-lrate_init = 1e-2
+lrate_init = 1e-3
 milestones_init = [49, 63]
 lrate_decay_init = 0.1
 weight_decay_init = 1e-5
 
 
 epochs = 70
-lrate = 1e-2
+lrate = 1e-3
 milestones = [49, 63]
 lrate_decay = 0.1
 weight_decay = 1e-5  # illness
 optim_type = "adam"
-batch_size = 128
+batch_size = 64
+
+
+# CIFAR100, ResNet32
+# epochs_init = 70
+# lrate_init = 1e-2
+# milestones_init = [49, 63]
+# lrate_decay_init = 0.1
+# weight_decay_init = 1e-5
+
+
+# epochs = 70
+# lrate = 1e-2
+# milestones = [49, 63]
+# lrate_decay = 0.1
+# weight_decay = 1e-5  # illness
+# optim_type = "adam"
+# batch_size = 128
 
 num_workers = 4
 hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_init","weight_decay_init", "epochs","lrate", "milestones", "lrate_decay", "weight_decay","batch_size", "num_workers", "optim_type"]

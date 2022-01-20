@@ -23,6 +23,23 @@ def conv3x3(in_planes, out_planes, stride=1):
                      padding=1, bias=False)
 
 
+class Normalization(nn.Module):
+    def __init__(self, mean, std, n_channels=3):
+        super(Normalization, self).__init__()
+        self.n_channels=n_channels
+        if mean is None:
+            mean = [.0] * n_channels
+        if std is None:
+            std = [.1] * n_channels
+        self.mean = torch.tensor(list(mean)).reshape((1, self.n_channels, 1, 1))
+        self.std = torch.tensor(list(std)).reshape((1, self.n_channels, 1, 1))
+        self.mean = nn.Parameter(self.mean)
+        self.std = nn.Parameter(self.std)
+    
+    def forward(self, x):
+        y = (x - self.mean / self.std)
+        return y
+
 class ChannelAttention(nn.Module):
     def __init__(self, in_planes, ratio=16):
         super(ChannelAttention, self).__init__()
@@ -133,6 +150,9 @@ class ResNet(nn.Module):
     def __init__(self, block, layers, num_classes=100):
         self.inplanes = 64
         super(ResNet, self).__init__()
+
+        self.norm = Normalization([0.5071, 0.4867, 0.4408], [0.2675, 0.2565, 0.2761])
+
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1,
                                bias=False)
         self.bn1 = nn.BatchNorm2d(64)
@@ -170,7 +190,9 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x):
+    def forward(self, x, norm=False):
+        if norm:
+            x = self.norm(x)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)

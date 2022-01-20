@@ -60,6 +60,29 @@ class iCIFAR100(iData):
         self.test_data, self.test_targets = test_dataset.data, np.array(test_dataset.targets)
 
 
+class iCIFAR100_Wo_Norm(iData):
+    use_path = False
+
+    train_trsf = [
+        transforms.RandomCrop((32,32),padding=4),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.ColorJitter(brightness=0.24705882352941178)
+    ]
+    test_trsf = []
+    common_trsf = [
+        transforms.ToTensor()
+    ]
+
+    class_order = np.arange(100).tolist()
+
+    def download_data(self):
+        train_dataset = datasets.cifar.CIFAR100(os.environ["CIFARDATASET"], train=True, download=True)
+        test_dataset = datasets.cifar.CIFAR100(os.environ["CIFARDATASET"], train=False, download=True)
+
+        self.train_data, self.train_targets = train_dataset.data, np.array(train_dataset.targets)
+        self.test_data, self.test_targets = test_dataset.data, np.array(test_dataset.targets)
+
+
 class iImageNet1000(iData):
     use_path = True
     train_trsf = [
