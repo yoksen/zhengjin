@@ -13,14 +13,15 @@ from utils.toolkit import target2onehot, tensor2numpy
 EPSILON = 1e-8
 
 # CIFAR100, resnet18_cbam
-epochs_init = 70
+# epochs_init = 70
+epochs_init = 2
 lrate_init = 1e-3
 milestones_init = [49, 63]
 lrate_decay_init = 0.1
 weight_decay_init = 1e-5
 
-
-epochs = 70
+epochs = 2
+# epochs = 70
 lrate = 1e-3
 milestones = [49, 63]
 lrate_decay = 0.1
@@ -71,10 +72,13 @@ class multi_bn(BaseLearner):
     def incremental_train(self, data_manager):
         self._cur_task += 1
         if self._cur_task <= 1:
-            self._total_classes = self._known_classes + data_manager.get_task_size(self._cur_task)
+            self._cur_class = data_manager.get_task_size(self._cur_task)
+            self._total_classes = self._known_classes + self._cur_class
+            self.augnumclass = self._total_classes + int(self._cur_class*(self._cur_class-1)/2)
 
             if self._cur_task == 0:
-                self._network.update_fc(data_manager.get_task_size(self._cur_task))
+                self.augnumclass = self._total_classes + int(self._cur_class*(self._cur_class-1)/2)
+                self._network.update_fc(self.augnumclass)
             else:
                 self._network2.update_fc(data_manager.get_task_size(self._cur_task))
             logging.info('Learning on {}-{}'.format(self._known_classes, self._total_classes))
@@ -132,8 +136,14 @@ class multi_bn(BaseLearner):
             correct, total = 0, 0
             for i, (_, inputs, targets) in enumerate(train_loader):
                 inputs, targets = inputs.to(self._device), targets.to(self._device)
-                logits = model(inputs)['logits']
-                onehots = target2onehot(targets - self._known_classes, self._total_classes - self._known_classes)
+
+                if self._cur_task == 0:
+                    inputs, targets = self.classAug(inputs, targets)
+                    logits = model(inputs)['logits']
+                    onehots = target2onehot(targets - self._known_classes, self.augnumclass)
+                else:
+                    logits = model(inputs)['logits']
+                    onehots = target2onehot(targets - self._known_classes, self._total_classes - self._known_classes)
 
                 loss = F.binary_cross_entropy_with_logits(logits, onehots)
 
@@ -191,3 +201,25 @@ class multi_bn(BaseLearner):
         for item in mix_data:
             x = torch.cat((x, item.unsqueeze(0)), 0)
         return x, y
+    
+    def generate_label(self, y_a, y_b):
+        if self._old_network == None:
+            y_a, y_b = y_a, y_b
+            #make sure y_a < y_b
+            assert y_a != y_b
+            if y_a > y_b:
+                tmp = y_a
+                y_a = y_b
+                y_b = tmp
+            #calculate the sum of arithmetic sequence and then sum the bias
+            label_index = ((2 * self._total_classes - y_a - 1) * y_a) / 2 + (y_b - y_a) - 1
+        else:
+            y_a = y_a - (self._total_classes - self._cur_class)
+            y_b = y_b - (self._total_classes - self._cur_class)
+            assert y_a != y_b
+            if y_a > y_b:
+                tmp = y_a
+                y_a = y_b
+                y_b = tmp
+            label_index = int(((2 * self._cur_class - y_a - 1) * y_a) / 2 + (y_b - y_a) - 1)
+        return label_index + self._total_classes
