@@ -9,19 +9,20 @@ from torch.utils.data import DataLoader
 from models.base import BaseLearner
 from utils.inc_net import IncrementalNet
 from utils.toolkit import target2onehot, tensor2numpy
+from convs.linears import SimpleLinear
 
 EPSILON = 1e-8
 
 # CIFAR100, resnet18_cbam
-# epochs_init = 70
-epochs_init = 2
+epochs_init = 70
+# epochs_init = 2
 lrate_init = 1e-3
 milestones_init = [49, 63]
 lrate_decay_init = 0.1
 weight_decay_init = 1e-5
 
-epochs = 2
-# epochs = 70
+epochs = 70
+# epochs = 2
 lrate = 1e-3
 milestones = [49, 63]
 lrate_decay = 0.1
@@ -74,7 +75,6 @@ class multi_bn(BaseLearner):
         if self._cur_task <= 1:
             self._cur_class = data_manager.get_task_size(self._cur_task)
             self._total_classes = self._known_classes + self._cur_class
-            self.augnumclass = self._total_classes + int(self._cur_class*(self._cur_class-1)/2)
 
             if self._cur_task == 0:
                 self.augnumclass = self._total_classes + int(self._cur_class*(self._cur_class-1)/2)
@@ -156,6 +156,15 @@ class multi_bn(BaseLearner):
                 _, preds = torch.max(logits, dim=1)
                 correct += preds.eq((targets - self._known_classes).expand_as(preds)).cpu().sum()
                 total += len(targets)
+            
+            if self._cur_task == 0 and epoch == epochs_num - 1:
+                weight = self._network.fc.weight.data
+                bias = self._network.fc.bias.data
+                in_feature = self._network.fc.in_features
+
+                self._network.fc = SimpleLinear(in_feature, self._total_classes)
+                self._network.fc.weight.data = weight[:self._total_classes]
+                self._network.fc.bias.data = bias[:self._total_classes]
 
             scheduler.step()
             train_acc = np.around(tensor2numpy(correct)*100 / total, decimals=2)
@@ -186,7 +195,7 @@ class multi_bn(BaseLearner):
         mix_target = []
         for _ in range(mix_times):
             #Returns a random permutation of integers 
-            index = torch.randperm(batch_size).to(self.device)
+            index = torch.randperm(batch_size).to(self._device)
             for i in range(batch_size):
                 if y[i] != y[index][i]:
                     new_label = self.generate_label(y[i].item(), y[index][i].item())
@@ -197,7 +206,7 @@ class multi_bn(BaseLearner):
                     mix_target.append(new_label)
 
         new_target = torch.Tensor(mix_target)
-        y = torch.cat((y, new_target.to(self.device).long()), 0)
+        y = torch.cat((y, new_target.to(self._device).long()), 0)
         for item in mix_data:
             x = torch.cat((x, item.unsqueeze(0)), 0)
         return x, y
