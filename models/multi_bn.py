@@ -168,3 +168,26 @@ class multi_bn(BaseLearner):
             total += len(targets)
 
         return np.around(tensor2numpy(correct)*100 / total, decimals=2)
+
+    #at most, the num of samples will be 5 times of origin
+    def classAug(self, x, y, alpha=20.0, mix_times=4):  # mixup based
+        batch_size = x.size()[0]
+        mix_data = []
+        mix_target = []
+        for _ in range(mix_times):
+            #Returns a random permutation of integers 
+            index = torch.randperm(batch_size).to(self.device)
+            for i in range(batch_size):
+                if y[i] != y[index][i]:
+                    new_label = self.generate_label(y[i].item(), y[index][i].item())
+                    lam = np.random.beta(alpha, alpha)
+                    if lam < 0.4 or lam > 0.6:
+                        lam = 0.5
+                    mix_data.append(lam * x[i] + (1 - lam) * x[index, :][i])
+                    mix_target.append(new_label)
+
+        new_target = torch.Tensor(mix_target)
+        y = torch.cat((y, new_target.to(self.device).long()), 0)
+        for item in mix_data:
+            x = torch.cat((x, item.unsqueeze(0)), 0)
+        return x, y

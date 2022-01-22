@@ -59,7 +59,6 @@ class iCIFAR100(iData):
         self.train_data, self.train_targets = train_dataset.data, np.array(train_dataset.targets)
         self.test_data, self.test_targets = test_dataset.data, np.array(test_dataset.targets)
 
-
 class iCIFAR100_Wo_Norm(iData):
     use_path = False
 
@@ -81,7 +80,6 @@ class iCIFAR100_Wo_Norm(iData):
 
         self.train_data, self.train_targets = train_dataset.data, np.array(train_dataset.targets)
         self.test_data, self.test_targets = test_dataset.data, np.array(test_dataset.targets)
-
 
 class iImageNet1000(iData):
     use_path = True
@@ -110,7 +108,6 @@ class iImageNet1000(iData):
 
         self.train_data, self.train_targets = split_images_labels(train_dset.imgs)
         self.test_data, self.test_targets = split_images_labels(test_dset.imgs)
-
 
 class iImageNet100(iData):
     use_path = True
@@ -142,8 +139,7 @@ class iImageNet100(iData):
 
         self.train_data, self.train_targets = split_images_labels(train_dset.imgs)
         self.test_data, self.test_targets = split_images_labels(test_dset.imgs)
-
-    
+ 
 class iTinyImageNet200(iData):
     use_path = False
 
@@ -242,6 +238,8 @@ class iTinyImageNet200(iData):
 
         self.train_data, self.train_targets = split_images_labels(train_images)
         self.test_data, self.test_targets = split_images_labels(test_images)
+
+
 
 def pil_loader(path):
     '''
