@@ -223,7 +223,6 @@ class Twobn_IncrementalNet(BaseNet):
         self._gradcam_hooks[1] = self.convnet.last_conv.register_forward_hook(forward_hook)
 
 
-
 class CosineIncrementalNet(BaseNet):
 
     def __init__(self, convnet_type, pretrained, nb_proxy=1):
