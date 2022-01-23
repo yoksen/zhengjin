@@ -29,8 +29,10 @@ def _train(args):
 
     cnn_curve, nme_curve, inverse_nme_curve = {'top1': [], 'top5': []}, {'top1': [], 'top5': []}, {'top1': [], 'top5': []}
     for task in range(data_manager.nb_tasks):
-        logging.info('All params: {}'.format(count_parameters(model._network)))
-        logging.info('Trainable params: {}'.format(count_parameters(model._network, True)))
+        if args['model_name'] != "multi_bn":
+            logging.info('All params: {}'.format(count_parameters(model._network)))
+            logging.info('Trainable params: {}'.format(count_parameters(model._network, True)))
+        
         model.incremental_train(data_manager)
 
         if args["model_name"] in ["icarl_regularization_v4", "icarl_regularization_v10", "icarl_generator_fixed"] :

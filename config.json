@@ -6,7 +6,7 @@
     "fixed_memory": true,
     "shuffle": true,
     "init_cls": 50,
-    "increment": 50,
+    "increment": 5,
     "model_name": "multi_bn",
     "convnet_type": "resnet18_cbam",
     "device": ["0"],

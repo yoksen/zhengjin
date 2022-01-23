@@ -118,9 +118,9 @@ class multi_bn(BaseLearner):
             else:
                 optimizer = optim.SGD(model.parameters(), lr=lrate_init, momentum=0.9, weight_decay=weight_decay_init)  # 1e-3
             scheduler = optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=milestones_init, gamma=lrate_decay_init)
-            for name, param in model.named_parameters():
-                if param.requires_grad:
-                    print(name)
+            # for name, param in model.named_parameters():
+            #     if param.requires_grad:
+            #         print(name)
                     # param.requires_grad = True
         else:
             for name, param in model.named_parameters():
@@ -129,9 +129,9 @@ class multi_bn(BaseLearner):
                 else:
                     param.requires_grad = False
             
-            for name, param in model.named_parameters():
-                if param.requires_grad:
-                    print(name)
+            # for name, param in model.named_parameters():
+            #     if param.requires_grad:
+            #         print(name)
                     # param.requires_grad = True
             
             if optim_type == "adam":

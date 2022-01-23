@@ -88,8 +88,8 @@ class BasicBlock(nn.Module):
         self.conv2 = conv3x3(planes, planes)
         self.bn2 = nn.BatchNorm2d(planes)
 
-        self.ca = ChannelAttention(planes)
-        self.sa = SpatialAttention()
+        # self.ca = ChannelAttention(planes)
+        # self.sa = SpatialAttention()
 
         self.downsample = downsample
         self.stride = stride
@@ -165,7 +165,7 @@ class ResNet(nn.Module):
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.feature = nn.AvgPool2d(4, stride=1)
         self.out_dim = 512 * block.expansion
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
+        # self.fc = nn.Linear(512 * block.expansion, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
