@@ -29,7 +29,7 @@ def _train(args):
 
     cnn_curve, nme_curve, inverse_nme_curve = {'top1': [], 'top5': []}, {'top1': [], 'top5': []}, {'top1': [], 'top5': []}
     for task in range(data_manager.nb_tasks):
-        if args['model_name'] not in ["multi_bn", "multi_bn_pretrained"]:
+        if "multi_bn" not in args['model_name']:
             logging.info('All params: {}'.format(count_parameters(model._network)))
             logging.info('Trainable params: {}'.format(count_parameters(model._network, True)))
         
@@ -37,13 +37,13 @@ def _train(args):
 
         if args["model_name"] in ["icarl_regularization_v4", "icarl_regularization_v10", "icarl_generator_fixed"] :
             cnn_accy, nme_accy, inverse_nme_accy = model.eval_task()
-        elif args["model_name"] in ["multi_bn", "multi_bn_pretrained"]:
+        elif "multi_bn" in args['model_name']:
             pass
         else:
             cnn_accy, nme_accy = model.eval_task()
         model.after_task()
 
-        if args['model_name'] not in ["multi_bn", "multi_bn_pretrained"]:
+        if "multi_bn" not in args['model_name']:
             if nme_accy is not None and inverse_nme_accy is not None:
                 logging.info('CNN: {}'.format(cnn_accy['grouped']))
                 logging.info('NME: {}'.format(nme_accy['grouped']))

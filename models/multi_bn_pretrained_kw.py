@@ -26,6 +26,8 @@ weight_decay_init = 2e-4
 class_aug = False
 #whether the first session we should fix the conv layers
 fix_parameter = False
+#whether the first session we should reset the BN layers
+first_reset_bn = True
 
 # epochs = 101
 epochs = 2
@@ -57,7 +59,8 @@ reset_bn = True
 num_workers = 4
 hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_init",
                    "weight_decay_init", "epochs","lrate", "milestones", "lrate_decay", 
-                   "weight_decay","batch_size", "num_workers", "optim_type", "reset_bn", "class_aug", "fix_parameter"]
+                   "weight_decay","batch_size", "num_workers", "optim_type", "reset_bn", 
+                   "class_aug", "fix_parameter", "first_reset_bn"]
 
 
 def is_fc(name):
@@ -119,6 +122,8 @@ class multi_bn_pretrained_kw(BaseLearner):
             else:
                 self._networks[self._cur_task].update_fc(self._cur_class)
             # self._network.update_fc(self.augnumclass)
+            if first_reset_bn:
+                self.reset_bn(self._networks[self._cur_task])
         else:
             self._networks[self._cur_task].update_fc(data_manager.get_task_size(self._cur_task))
             self._networks[self._cur_task].state_dict().update(self._networks[0].state_dict())
@@ -148,7 +153,6 @@ class multi_bn_pretrained_kw(BaseLearner):
             if fix_parameter:
                 for name, param in model.named_parameters():
                     if is_fc(name) or is_bn(name) or is_kw(name):
-                        print(name)
                         param.requires_grad = True
                     else:
                         param.requires_grad = False
@@ -170,7 +174,6 @@ class multi_bn_pretrained_kw(BaseLearner):
         else:
             for name, param in model.named_parameters():
                 if is_fc(name) or is_bn(name) or is_kw(name):
-                    print(name)
                     param.requires_grad = True
                 else:
                     param.requires_grad = False
