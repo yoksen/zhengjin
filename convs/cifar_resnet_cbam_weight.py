@@ -5,16 +5,11 @@ import torch.utils.model_zoo as model_zoo
 import torch.nn.functional as F
 from collections import OrderedDict
 
-__all__ = ['ResNet', 'resnet18_cbam', 'resnet34_cbam', 'resnet50_cbam', 'resnet101_cbam',
-           'resnet152_cbam']
+__all__ = ['ResNetKW', 'resnet18_cbam_kw']
 
 
 model_urls = {
-    'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
-    'resnet34': 'https://download.pytorch.org/models/resnet34-333f7ec4.pth',
-    'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
-    'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
-    'resnet152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth',
+    'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth'
 }
 
 
@@ -50,33 +45,19 @@ class Normalization(nn.Module):
         y = (x - self.mean / self.std)
         return y
 
-class ChannelAttention(nn.Module):
-    def __init__(self, in_planes, ratio=16):
-        super(ChannelAttention, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
-
-        self.fc1   = nn.Conv2d(in_planes, in_planes // 16, 1, bias=False)
-        self.relu1 = nn.ReLU()
-        self.fc2   = nn.Conv2d(in_planes // 16, in_planes, 1, bias=False)
-
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-        avg_out = self.fc2(self.relu1(self.fc1(self.avg_pool(x))))
-        max_out = self.fc2(self.relu1(self.fc1(self.max_pool(x))))
-        out = avg_out + max_out
-        return self.sigmoid(out)
-
 class BasicBlock(nn.Module):
     expansion = 1
 
     def __init__(self, inplanes, planes, stride=1, downsample=None):
         super(BasicBlock, self).__init__()
         self.conv1 = conv3x3(inplanes, planes, stride)
+        #my add
+        self.kw1 = KernelWeight(planes)
         self.bn1 = nn.BatchNorm2d(planes)
         self.relu = nn.ReLU(inplace=True)
         self.conv2 = conv3x3(planes, planes)
+        #my add
+        self.kw2 = KernelWeight(planes)
         self.bn2 = nn.BatchNorm2d(planes)
 
         self.downsample = downsample
@@ -85,9 +66,16 @@ class BasicBlock(nn.Module):
     def forward(self, x):
         residual = x
         out = self.conv1(x)
+
+        out = self.kw1(out)
+        
         out = self.bn1(out)
         out = self.relu(out)
+
         out = self.conv2(out)
+
+        out = self.kw2(out)
+
         out = self.bn2(out)
         if self.downsample is not None:
             residual = self.downsample(x)
@@ -95,17 +83,20 @@ class BasicBlock(nn.Module):
         out = self.relu(out)
         return out
 
-class ResNet(nn.Module):
+class ResNetKW(nn.Module):
 
     def __init__(self, block, layers, num_classes=100, normed=False):
         self.inplanes = 64
-        super(ResNet, self).__init__()
+        super(ResNetKW, self).__init__()
 
         self.norm = Normalization([0.5071, 0.4867, 0.4408], [0.2675, 0.2565, 0.2761])
         self.normed = normed
 
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1,
                                bias=False)
+        
+        self.kw = KernelWeight(64)
+
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -131,6 +122,7 @@ class ResNet(nn.Module):
             downsample = nn.Sequential(
                 nn.Conv2d(self.inplanes, planes * block.expansion,
                           kernel_size=1, stride=stride, bias=False),
+                KernelWeight(planes * block.expansion),
                 nn.BatchNorm2d(planes * block.expansion),
             )
         layers = []
@@ -145,6 +137,9 @@ class ResNet(nn.Module):
         if self.normed:
             x = self.norm(x)
         x = self.conv1(x)
+        
+        x = self.kw(x)
+        
         x = self.bn1(x)
         x = self.relu(x)
         x_1 = self.layer1(x)
@@ -161,12 +156,12 @@ class ResNet(nn.Module):
         }
 
 
-def resnet18_cbam(pretrained=False, normed=False, **kwargs):
+def resnet18_cbam_kw(pretrained=False, normed=False, **kwargs):
     """Constructs a ResNet-18 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = ResNet(BasicBlock, [2, 2, 2, 2], normed=normed, **kwargs)
+    model = ResNetKW(BasicBlock, [2, 2, 2, 2], normed=normed, **kwargs)
     if pretrained:
         pretrained_state_dict = model_zoo.load_url(model_urls['resnet18'])
         now_state_dict        = model.state_dict()
@@ -175,72 +170,54 @@ def resnet18_cbam(pretrained=False, normed=False, **kwargs):
     return model
 
 
-def resnet34_cbam(pretrained=False, **kwargs):
-    """Constructs a ResNet-34 model.
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    model = ResNet(BasicBlock, [3, 4, 6, 3], **kwargs)
-    if pretrained:
-        pretrained_state_dict = model_zoo.load_url(model_urls['resnet34'])
-        now_state_dict        = model.state_dict()
-        now_state_dict.update(pretrained_state_dict)
-        model.load_state_dict(now_state_dict)
-    return model
+def is_fc(name):
+    if "fc" in name:
+        return True
+    else:
+        return False
 
+def is_bn(name):
+    if "running_mean" in name or "running_var" in name or "num_batches_tracked" in name:
+        return True
+    else:
+        return False
 
-def resnet50_cbam(pretrained=False, **kwargs):
-    """Constructs a ResNet-50 model.
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
-    if pretrained:
-        pretrained_state_dict = model_zoo.load_url(model_urls['resnet50'])
-        now_state_dict        = model.state_dict()
-        now_state_dict.update(pretrained_state_dict)
-        model.load_state_dict(now_state_dict)
-    return model
-
-
-def resnet101_cbam(pretrained=False, **kwargs):
-    """Constructs a ResNet-101 model.
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    model = ResNet(Bottleneck, [3, 4, 23, 3], **kwargs)
-    if pretrained:
-        pretrained_state_dict = model_zoo.load_url(model_urls['resnet101'])
-        now_state_dict        = model.state_dict()
-        now_state_dict.update(pretrained_state_dict)
-        model.load_state_dict(now_state_dict)
-    return model
-
-
-def resnet152_cbam(pretrained=False, **kwargs):
-    """Constructs a ResNet-152 model.
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    model = ResNet(Bottleneck, [3, 8, 36, 3], **kwargs)
-    if pretrained:
-        pretrained_state_dict = model_zoo.load_url(model_urls['resnet152'])
-        now_state_dict        = model.state_dict()
-        now_state_dict.update(pretrained_state_dict)
-        model.load_state_dict(now_state_dict)
-    return model
-
+def is_kw(name):
+    if "kw" in name:
+        return True
+    else:
+        return False
 
 if __name__ == "__main__":
-    model = resnet18_cbam()
-    pretrained_dict = torch.load("/data/junjie/code/zhengjin/saved_parameters/imagenet200_simsiam_pretrained_model.pth")
+    #change parameter
+    # pretrained_dict = torch.load("/data/junjie/code/zhengjin/saved_parameters/imagenet200_simsiam_pretrained_model.pth")
+    # state_dict = OrderedDict()
+    # for k, v in pretrained_dict.items():
+    #     if "downsample.1" in k:
+    #         temp = k.split(".")
+    #         temp[-2] = "2"
+    #         state_dict[".".join(temp)] = v
+    #         print(".".join(temp))
+    #     else:
+    #         state_dict[k] = v
+    
+    # torch.save(state_dict, "/data/junjie/code/zhengjin/saved_parameters/imagenet200_simsiam_pretrained_model_kw.pth")
+    
+    model = resnet18_cbam_kw(normed=True)
+    pretrained_dict = torch.load("/data/junjie/code/zhengjin/saved_parameters/imagenet200_simsiam_pretrained_model_kw.pth")
     state_dict = model.state_dict()
-    print(state_dict["layer4.1.bn2.running_mean"])
-
+    # print(state_dict["layer4.1.bn2.running_mean"])
+    
     state_dict.update(pretrained_dict)
-
     model.load_state_dict(state_dict)
-    print(model.state_dict()["layer4.1.bn2.running_mean"])
+    for k, v in model.state_dict().items():
+        if is_bn(k) or is_fc(k) or is_kw(k):
+            print(k)
+    # print(model.state_dict()["layer4.1.bn2.running_mean"])
+
+    # x = torch.randn(4, 3, 32, 32)
+    # output = model(x)
+
     # for k, v in pretrained_dict.items():
     #     if "featureExactor" in k and "fc" not in k:
     #         changed_dict[".".join(k.split(".")[1:])] = v

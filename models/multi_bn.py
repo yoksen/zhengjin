@@ -55,7 +55,17 @@ hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_
                    "weight_decay_init", "epochs","lrate", "milestones", "lrate_decay", 
                    "weight_decay","batch_size", "num_workers", "optim_type", "reset_bn"]
 
+def is_fc(name):
+    if "fc" in name:
+        return True
+    else:
+        return False
 
+def is_bn(name):
+    if "running_mean" in name or "running_var" in name or "num_batches_tracked" in name:
+        return True
+    else:
+        return False
 
 class multi_bn(BaseLearner):
     def __init__(self, args):
@@ -124,7 +134,8 @@ class multi_bn(BaseLearner):
                     # param.requires_grad = True
         else:
             for name, param in model.named_parameters():
-                if "fc" in name or "bn" in name:
+                if is_fc(name) or is_bn(name):
+                # if "fc" in name or "bn" in name:
                     param.requires_grad = True
                 else:
                     param.requires_grad = False
