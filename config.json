@@ -7,8 +7,8 @@
     "shuffle": true,
     "init_cls": 5,
     "increment": 5,
-    "model_name": "multi_bn_pretrained_kw",
-    "convnet_type": "resnet18_cbam_kw",
+    "model_name": "multi_bn_pretrained",
+    "convnet_type": "resnet18_cbam",
     "device": ["0"],
     "seed": [32, 40, 50, 60, 100],
     "pretrained":false

@@ -17,8 +17,8 @@ from convs.linears import SimpleLinear
 EPSILON = 1e-8
 
 # CIFAR100, resnet18_cbam_kw
-# epochs_init = 101
-epochs_init = 2
+epochs_init = 101
+# epochs_init = 2
 lrate_init = 1e-4
 milestones_init = [45, 90]
 lrate_decay_init = 0.1
@@ -27,11 +27,11 @@ class_aug = False
 #whether the first session we should fix the conv layers
 fix_parameter = False
 #whether the first session we should reset the BN layers
-first_reset_bn = True
+first_reset_bn = False
 
-# epochs = 101
-epochs = 2
-lrate = 1e-3
+epochs = 101
+# epochs = 2
+lrate = 1e-4
 milestones = [45, 90]
 lrate_decay = 0.1
 weight_decay = 2e-4  # illness
@@ -193,6 +193,7 @@ class multi_bn_pretrained_kw(BaseLearner):
         for m in model.modules():
             if isinstance(m, nn.BatchNorm2d):
                 m.reset_running_stats()
+                m.reset_parameters()
 
     def _update_representation(self, model, train_loader, test_loader, optimizer, scheduler):
         if self._cur_task == 0:

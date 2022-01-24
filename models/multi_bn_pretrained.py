@@ -17,8 +17,8 @@ from convs.linears import SimpleLinear
 EPSILON = 1e-8
 
 # CIFAR100, resnet18_cbam
-epochs_init = 101
-# epochs_init = 2
+# epochs_init = 101
+epochs_init = 5
 lrate_init = 1e-4
 milestones_init = [45, 90]
 lrate_decay_init = 0.1
@@ -26,8 +26,8 @@ weight_decay_init = 2e-4
 class_aug = False
 fix_parameter = True
 
-epochs = 101
-# epochs = 2
+# epochs = 101
+epochs = 5
 lrate = 1e-3
 milestones = [45, 90]
 lrate_decay = 0.1
@@ -181,7 +181,9 @@ class multi_bn_pretrained(BaseLearner):
     def reset_bn(self, model):
         for m in model.modules():
             if isinstance(m, nn.BatchNorm2d):
+                # print("reset_bn")
                 m.reset_running_stats()
+                m.reset_parameters()
 
     def _update_representation(self, model, train_loader, test_loader, optimizer, scheduler):
         if self._cur_task == 0:

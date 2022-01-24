@@ -102,6 +102,8 @@ class multi_bn(BaseLearner):
             self._networks[self._cur_task].update_fc(data_manager.get_task_size(self._cur_task))
             self._networks[self._cur_task].state_dict().update(self._networks[0].state_dict())
             if reset_bn:
+                print("resetting bn")
+                
                 self.reset_bn(self._networks[self._cur_task])
         
         logging.info('Learning on {}-{}'.format(self._known_classes, self._total_classes))
@@ -156,6 +158,7 @@ class multi_bn(BaseLearner):
         for m in model.modules():
             if isinstance(m, nn.BatchNorm2d):
                 m.reset_running_stats()
+                m.reset_parameters()
 
     def _update_representation(self, model, train_loader, test_loader, optimizer, scheduler):
         if self._cur_task == 0:
