@@ -19,11 +19,12 @@ EPSILON = 1e-8
 # CIFAR100, resnet18_cbam
 epochs_init = 101
 # epochs_init = 2
-lrate_init = 1e-3
+lrate_init = 1e-4
 milestones_init = [45, 90]
 lrate_decay_init = 0.1
 weight_decay_init = 2e-4
 class_aug = False
+fix_parameter = True
 
 epochs = 101
 # epochs = 2
@@ -55,7 +56,7 @@ reset_bn = True
 num_workers = 4
 hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_init",
                    "weight_decay_init", "epochs","lrate", "milestones", "lrate_decay", 
-                   "weight_decay","batch_size", "num_workers", "optim_type", "reset_bn", "class_aug"]
+                   "weight_decay","batch_size", "num_workers", "optim_type", "reset_bn", "class_aug", "fix_parameter"]
 
 
 
@@ -88,7 +89,7 @@ class multi_bn_pretrained(BaseLearner):
         if self._cur_task == 0:
             #load pretrained model
             state_dict = self._networks[self._cur_task].convnet.state_dict()
-            pretrained_dict = torch.load("/data/junjie/code/zhengjin/saved_parameters/imagenet200_simsiam_pretrained_model.pth")
+            pretrained_dict = torch.load("./saved_parameters/imagenet200_simsiam_pretrained_model.pth")
             state_dict.update(pretrained_dict)
             self._networks[self._cur_task].convnet.load_state_dict(state_dict)
 
@@ -125,15 +126,27 @@ class multi_bn_pretrained(BaseLearner):
         model.to(self._device)
         
         if self._cur_task == 0:
-            if optim_type == "adam":
-                optimizer = optim.Adam(model.parameters(), lr=lrate_init, weight_decay=weight_decay_init)
+            if fix_parameter:
+                for name, param in model.named_parameters():
+                    if "fc" in name or "bn" in name:
+                        param.requires_grad = True
+                    else:
+                        param.requires_grad = False
+                if optim_type == "adam":
+                    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lrate_init, weight_decay=weight_decay_init)
+                else:
+                    optimizer = optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr=lrate_init, momentum=0.9, weight_decay=weight_decay_init)  # 1e-3
+            
             else:
-                optimizer = optim.SGD(model.parameters(), lr=lrate_init, momentum=0.9, weight_decay=weight_decay_init)  # 1e-3
+                if optim_type == "adam":
+                    optimizer = optim.Adam(model.parameters(), lr=lrate_init, weight_decay=weight_decay_init)
+                else:
+                    optimizer = optim.SGD(model.parameters(), lr=lrate_init, momentum=0.9, weight_decay=weight_decay_init)  # 1e-3
             scheduler = optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=milestones_init, gamma=lrate_decay_init)
-            # for name, param in model.named_parameters():
-            #     if param.requires_grad:
-            #         print(name)
-                    # param.requires_grad = True
+                # for name, param in model.named_parameters():
+                #     if param.requires_grad:
+                #         print(name)
+                        # param.requires_grad = True
         else:
             for name, param in model.named_parameters():
                 if "fc" in name or "bn" in name:
