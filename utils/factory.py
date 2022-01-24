@@ -28,6 +28,7 @@ from models.icarl_regularization_v10 import icarl_regularization_v10
 from models.multi_bn import multi_bn
 from models.icarl_generator_fixed import icarl_generator_fixed
 from models.multi_bn_pretrained import multi_bn_pretrained
+from models.multi_bn_pretrained_kw import multi_bn_pretrained_kw
 
 
 def get_model(model_name, args):
@@ -90,3 +91,5 @@ def get_model(model_name, args):
         return icarl_generator_fixed(args)
     elif name == "multi_bn_pretrained":
         return multi_bn_pretrained(args)
+    elif name == "multi_bn_pretrained_kw":
+        return multi_bn_pretrained_kw(args)
