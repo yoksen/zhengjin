@@ -1,5 +1,6 @@
 import logging
 from statistics import mode
+from matplotlib.pyplot import cla
 import numpy as np
 import os
 from tqdm import tqdm
@@ -22,6 +23,7 @@ lrate_init = 1e-3
 milestones_init = [45, 90]
 lrate_decay_init = 0.1
 weight_decay_init = 2e-4
+class_aug = False
 
 epochs = 101
 # epochs = 2
@@ -53,7 +55,7 @@ reset_bn = True
 num_workers = 4
 hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_init",
                    "weight_decay_init", "epochs","lrate", "milestones", "lrate_decay", 
-                   "weight_decay","batch_size", "num_workers", "optim_type", "reset_bn"]
+                   "weight_decay","batch_size", "num_workers", "optim_type", "reset_bn", "class_aug"]
 
 
 
@@ -84,15 +86,18 @@ class multi_bn_pretrained(BaseLearner):
 
         self._networks.append(IncrementalNet(self._convnet_type, False))
         if self._cur_task == 0:
-            self.augnumclass = self._total_classes + int(self._cur_class*(self._cur_class-1)/2)
-
             #load pretrained model
             state_dict = self._networks[self._cur_task].convnet.state_dict()
             pretrained_dict = torch.load("/data/junjie/code/zhengjin/saved_parameters/imagenet200_simsiam_pretrained_model.pth")
             state_dict.update(pretrained_dict)
             self._networks[self._cur_task].convnet.load_state_dict(state_dict)
 
-            self._networks[self._cur_task].update_fc(self.augnumclass)
+            #compare the difference between using and unusing class augmentation in first session
+            if class_aug:
+                self.augnumclass = self._total_classes + int(self._cur_class*(self._cur_class-1)/2)
+                self._networks[self._cur_task].update_fc(self.augnumclass)
+            else:
+                self._networks[self._cur_task].update_fc(self._cur_class)
             # self._network.update_fc(self.augnumclass)
         else:
             self._networks[self._cur_task].update_fc(data_manager.get_task_size(self._cur_task))
@@ -171,7 +176,8 @@ class multi_bn_pretrained(BaseLearner):
                 inputs, targets = inputs.to(self._device), targets.to(self._device)
 
                 if self._cur_task == 0:
-                    inputs, targets = self.classAug(inputs, targets)
+                    if class_aug:
+                        inputs, targets = self.classAug(inputs, targets)
                     logits = model(inputs)['logits']
                 else:
                     logits = model(inputs)['logits']
@@ -189,7 +195,7 @@ class multi_bn_pretrained(BaseLearner):
                 correct += preds.eq((targets - self._known_classes).expand_as(preds)).cpu().sum()
                 total += len(targets)
             
-            if self._cur_task == 0 and epoch == epochs_num - 1:
+            if self._cur_task == 0 and epoch == epochs_num - 1 and class_aug:
                 weight = model.fc.weight.data
                 bias = model.fc.bias.data
                 in_feature = model.fc.in_features
