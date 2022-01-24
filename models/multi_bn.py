@@ -72,6 +72,7 @@ class multi_bn(BaseLearner):
         super().__init__(args)
         self._networks = []
         self._convnet_type = args['convnet_type']
+        assert args['convnet_type'] == "resnet18_cbam", "wrong convnet_type"
         self._seed = args['seed']
 
         # log hyperparameter

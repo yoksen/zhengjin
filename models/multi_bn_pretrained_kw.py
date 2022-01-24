@@ -121,7 +121,6 @@ class multi_bn_pretrained_kw(BaseLearner):
                 self._networks[self._cur_task].update_fc(self.augnumclass)
             else:
                 self._networks[self._cur_task].update_fc(self._cur_class)
-            # self._network.update_fc(self.augnumclass)
             if first_reset_bn:
                 self.reset_bn(self._networks[self._cur_task])
         else:
@@ -220,7 +219,6 @@ class multi_bn_pretrained_kw(BaseLearner):
                     logits = model(inputs)['logits']
 
                 loss = nn.CrossEntropyLoss()(logits/temp, targets - self._known_classes)
-                # loss = F.binary_cross_entropy_with_logits(logits, onehots)
 
                 optimizer.zero_grad()
                 loss.backward()
