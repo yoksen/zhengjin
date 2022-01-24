@@ -16,18 +16,19 @@ from convs.linears import SimpleLinear
 
 EPSILON = 1e-8
 
-# CIFAR100, resnet18_cbam
-epochs_init = 101
-# epochs_init = 2
+# CIFAR100, resnet18_cbam_kw
+# epochs_init = 101
+epochs_init = 2
 lrate_init = 1e-4
 milestones_init = [45, 90]
 lrate_decay_init = 0.1
 weight_decay_init = 2e-4
 class_aug = False
+#whether the first session we should fix the conv layers
 fix_parameter = False
 
-epochs = 101
-# epochs = 2
+# epochs = 101
+epochs = 2
 lrate = 1e-3
 milestones = [45, 90]
 lrate_decay = 0.1
@@ -147,6 +148,7 @@ class multi_bn_pretrained_kw(BaseLearner):
             if fix_parameter:
                 for name, param in model.named_parameters():
                     if is_fc(name) or is_bn(name) or is_kw(name):
+                        print(name)
                         param.requires_grad = True
                     else:
                         param.requires_grad = False
@@ -168,7 +170,7 @@ class multi_bn_pretrained_kw(BaseLearner):
         else:
             for name, param in model.named_parameters():
                 if is_fc(name) or is_bn(name) or is_kw(name):
-                # if "fc" in name or "bn" in name:
+                    print(name)
                     param.requires_grad = True
                 else:
                     param.requires_grad = False

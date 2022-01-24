@@ -139,7 +139,7 @@ class multi_bn_pretrained(BaseLearner):
         if self._cur_task == 0:
             if fix_parameter:
                 for name, param in model.named_parameters():
-                    if "fc" in name or "bn" in name:
+                    if is_fc(name) or is_bn(name):
                         param.requires_grad = True
                     else:
                         param.requires_grad = False
@@ -161,7 +161,6 @@ class multi_bn_pretrained(BaseLearner):
         else:
             for name, param in model.named_parameters():
                 if is_fc(name) or is_bn(name):
-                # if "fc" in name or "bn" in name:
                     param.requires_grad = True
                 else:
                     param.requires_grad = False

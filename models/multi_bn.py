@@ -135,7 +135,6 @@ class multi_bn(BaseLearner):
         else:
             for name, param in model.named_parameters():
                 if is_fc(name) or is_bn(name):
-                # if "fc" in name or "bn" in name:
                     param.requires_grad = True
                 else:
                     param.requires_grad = False
