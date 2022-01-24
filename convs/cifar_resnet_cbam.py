@@ -3,6 +3,7 @@ import torch.nn as nn
 import math
 import torch.utils.model_zoo as model_zoo
 import torch.nn.functional as F
+from collections import OrderedDict
 
 __all__ = ['ResNet', 'resnet18_cbam', 'resnet34_cbam', 'resnet50_cbam', 'resnet101_cbam',
            'resnet152_cbam']
@@ -279,3 +280,20 @@ def resnet152_cbam(pretrained=False, **kwargs):
         now_state_dict.update(pretrained_state_dict)
         model.load_state_dict(now_state_dict)
     return model
+
+
+if __name__ == "__main__":
+    model = resnet18_cbam()
+    pretrained_dict = torch.load("/data/junjie/code/zhengjin/saved_parameters/imagenet200_simsiam_pretrained_model.pth")
+    state_dict = model.state_dict()
+    print(state_dict["layer4.1.bn2.running_mean"])
+
+    state_dict.update(pretrained_dict)
+
+    model.load_state_dict(state_dict)
+    print(model.state_dict()["layer4.1.bn2.running_mean"])
+    # for k, v in pretrained_dict.items():
+    #     if "featureExactor" in k and "fc" not in k:
+    #         changed_dict[".".join(k.split(".")[1:])] = v
+    
+    # torch.save(changed_dict, "/data/junjie/code/zhengjin/saved_parameters/imagenet200_simsiam_pretrained_model.pth")

@@ -1,3 +1,4 @@
+import imp
 from models.icarl import iCaRL
 from models.end2end import End2End
 from models.dr import DR
@@ -26,6 +27,7 @@ from models.icarl_regularization_v9 import icarl_regularization_v9
 from models.icarl_regularization_v10 import icarl_regularization_v10
 from models.multi_bn import multi_bn
 from models.icarl_generator_fixed import icarl_generator_fixed
+from models.multi_bn_pretrained import multi_bn_pretrained
 
 
 def get_model(model_name, args):
@@ -86,3 +88,5 @@ def get_model(model_name, args):
         return multi_bn(args)
     elif name == "icarl_generator_fixed":
         return icarl_generator_fixed(args)
+    elif name == "multi_bn_pretrained":
+        return multi_bn_pretrained(args)
