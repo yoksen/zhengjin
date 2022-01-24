@@ -284,14 +284,17 @@ def resnet152_cbam(pretrained=False, **kwargs):
 
 if __name__ == "__main__":
     model = resnet18_cbam()
-    pretrained_dict = torch.load("/data/junjie/code/zhengjin/saved_parameters/imagenet200_simsiam_pretrained_model.pth")
+    pretrained_dict = torch.load("../saved_parameters/imagenet200_simsiam_pretrained_model.pth")
     state_dict = model.state_dict()
-    print(state_dict["layer4.1.bn2.running_mean"])
+    # for k, v in pretrained_dict.items():
+    #     print(k)
+    print(state_dict["layer4.1.bn2.num_batches_tracked"])
+    print(pretrained_dict["layer4.1.bn2.num_batches_tracked"])
 
-    state_dict.update(pretrained_dict)
+    # state_dict.update(pretrained_dict)
 
-    model.load_state_dict(state_dict)
-    print(model.state_dict()["layer4.1.bn2.running_mean"])
+    # model.load_state_dict(state_dict)
+    # print(model.state_dict()["layer4.1.bn2.running_mean"])
     # for k, v in pretrained_dict.items():
     #     if "featureExactor" in k and "fc" not in k:
     #         changed_dict[".".join(k.split(".")[1:])] = v
