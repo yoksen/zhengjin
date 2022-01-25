@@ -261,6 +261,8 @@ class multi_bn_pretrained_kw(BaseLearner):
             scheduler.step()
             train_acc = np.around(tensor2numpy(correct)*100 / total, decimals=2)
             test_acc = self._compute_accuracy(model, test_loader)
+            if epoch == epochs_num - 1:
+                self._task_acc.append(round(test_acc, 2))
             info = 'Task {}, Epoch {}/{} => Loss {:.3f}, Train_accy {:.2f}, Test_accy {:.2f}'.format(
                 self._cur_task, epoch+1, epochs_num, losses/len(train_loader), train_acc, test_acc)
             prog_bar.set_description(info)
