@@ -34,7 +34,7 @@ lrate_decay = 0.1
 weight_decay = 2e-4  # illness
 optim_type = "adam"
 batch_size = 64
-reset_bn = False
+reset_bn = True
 
 
 # CIFAR100, ResNet32
@@ -78,6 +78,10 @@ class multi_bn_pretrained(BaseLearner):
         self._convnet_type = args['convnet_type']
         assert args['convnet_type'] == "resnet18_cbam", "wrong convnet_type"
         self._seed = args['seed']
+        self._task_acc = []
+        self._init_cls = args['init_cls']
+        self._increment = args['increment']
+
 
         # log hyperparameter
         logging.info(50*"-")
@@ -88,6 +92,15 @@ class multi_bn_pretrained(BaseLearner):
 
     def after_task(self):
         self._known_classes = self._total_classes
+
+        weighted_accs = self.caculate_weighted_average(self._init_cls, self._increment, self._task_acc)
+        logging.info(50*"-")
+        logging.info("log_accs")
+        logging.info(50*"-")
+        
+        logging.info("task acc is {}".format(self._task_acc))
+        logging.info("weighted acc is {}".format(weighted_accs))
+
         if self._cur_task == 0:
             if not os.path.exists("./saved_model/multi_bn_pretrained_{}.pth".format(self._seed)):
                 torch.save(self._networks[self._cur_task].state_dict(), "./saved_model/multi_bn_pretrained_{}.pth".format(self._seed))
@@ -244,6 +257,9 @@ class multi_bn_pretrained(BaseLearner):
             scheduler.step()
             train_acc = np.around(tensor2numpy(correct)*100 / total, decimals=2)
             test_acc = self._compute_accuracy(model, test_loader)
+            if epoch == epochs_num - 1:
+                self._task_acc.append(round(test_acc, 2))
+            
             info = 'Task {}, Epoch {}/{} => Loss {:.3f}, Train_accy {:.2f}, Test_accy {:.2f}'.format(
                 self._cur_task, epoch+1, epochs_num, losses/len(train_loader), train_acc, test_acc)
             prog_bar.set_description(info)
@@ -307,3 +323,20 @@ class multi_bn_pretrained(BaseLearner):
                 y_b = tmp
             label_index = int(((2 * self._cur_class - y_a - 1) * y_a) / 2 + (y_b - y_a) - 1)
         return label_index + self._total_classes
+
+    def caculate_weighted_average(self, init_class, increment, task_acc):
+        weighted_accs = []
+        class_each_step = []
+        for i in range(len(task_acc)):
+            if i == 0:
+                class_each_step.append(init_class)
+            else:
+                class_each_step.append(increment)
+        class_each_step = np.array(class_each_step)
+        task_acc = np.array(task_acc)
+
+        for i in range(len(task_acc)):
+            temp = class_each_step[:i+1] / sum(class_each_step[:i+1])
+            weighted_accs.append(round(sum(task_acc[:i+1] * temp), 2))
+        
+        return weighted_accs

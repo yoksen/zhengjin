@@ -31,7 +31,7 @@ first_reset_bn = False
 
 epochs = 101
 # epochs = 2
-lrate = 1e-4
+lrate = 1e-3
 milestones = [45, 90]
 lrate_decay = 0.1
 weight_decay = 2e-4  # illness
