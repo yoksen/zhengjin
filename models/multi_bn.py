@@ -31,7 +31,7 @@ lrate_decay = 0.1
 weight_decay = 2e-4  # illness
 optim_type = "adam"
 batch_size = 64
-reset_bn = True
+reset_bn = False
 
 
 # CIFAR100, ResNet32
@@ -100,11 +100,15 @@ class multi_bn(BaseLearner):
             # self._network.update_fc(self.augnumclass)
         else:
             self._networks[self._cur_task].update_fc(data_manager.get_task_size(self._cur_task))
-            self._networks[self._cur_task].state_dict().update(self._networks[0].state_dict())
+            state_dict = self._networks[self._cur_task].convnet.state_dict()
+            state_dict.update(self._networks[0].convnet.state_dict())
+            # print(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"])
+            
+            self._networks[self._cur_task].convnet.load_state_dict(state_dict)
+            # print(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"])
+            # self._networks[self._cur_task].state_dict().update(self._networks[0].state_dict())
             if reset_bn:
-                print("resetting bn")
-                
-                self.reset_bn(self._networks[self._cur_task])
+                self.reset_bn(self._networks[self._cur_task].convnet)
         
         logging.info('Learning on {}-{}'.format(self._known_classes, self._total_classes))
 

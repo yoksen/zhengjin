@@ -286,10 +286,11 @@ if __name__ == "__main__":
     model = resnet18_cbam()
     pretrained_dict = torch.load("../saved_parameters/imagenet200_simsiam_pretrained_model.pth")
     state_dict = model.state_dict()
-    # for k, v in pretrained_dict.items():
-    #     print(k)
-    print(state_dict["layer4.1.bn2.num_batches_tracked"])
-    print(pretrained_dict["layer4.1.bn2.num_batches_tracked"])
+    for k, v in pretrained_dict.items():
+        print(k)
+    print(pretrained_dict["conv1.weight"][0])
+    # print(state_dict["layer4.1.bn2.num_batches_tracked"])
+    # print(pretrained_dict["layer4.1.bn2.num_batches_tracked"])
 
     # state_dict.update(pretrained_dict)
 

@@ -17,17 +17,17 @@ from convs.linears import SimpleLinear
 EPSILON = 1e-8
 
 # CIFAR100, resnet18_cbam
-# epochs_init = 101
-epochs_init = 5
+epochs_init = 101
+# epochs_init = 5
 lrate_init = 1e-4
 milestones_init = [45, 90]
 lrate_decay_init = 0.1
 weight_decay_init = 2e-4
 class_aug = False
-fix_parameter = True
+fix_parameter = False
 
-# epochs = 101
-epochs = 5
+epochs = 101
+# epochs = 5
 lrate = 1e-3
 milestones = [45, 90]
 lrate_decay = 0.1
@@ -91,6 +91,9 @@ class multi_bn_pretrained(BaseLearner):
         if self._cur_task == 0:
             if not os.path.exists("./saved_model/multi_bn_pretrained_{}.pth".format(self._seed)):
                 torch.save(self._networks[self._cur_task].state_dict(), "./saved_model/multi_bn_pretrained_{}.pth".format(self._seed))
+            # else:
+            #     print(self._networks[0].convnet.state_dict()["conv1.weight"][0])
+            #     print(self._networks[self._cur_task].convnet.state_dict()["conv1.weight"][0])
 
     def incremental_train(self, data_manager):
         self._cur_task += 1
