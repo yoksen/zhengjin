@@ -16,21 +16,18 @@ from convs.linears import SimpleLinear
 
 EPSILON = 1e-8
 
-# CIFAR100, resnet18_cbam_kw
+# CIFAR100, resnet18_cbam
 epochs_init = 101
-# epochs_init = 5
+# epochs_init = 2
 lrate_init = 1e-4
 milestones_init = [45, 90]
 lrate_decay_init = 0.1
 weight_decay_init = 2e-4
 class_aug = False
-#whether the first session we should fix the conv layers
 fix_parameter = False
-#whether the first session we should reset the BN layers
-first_reset_bn = False
 
 epochs = 101
-# epochs = 5
+# epochs = 2
 lrate = 1e-3
 milestones = [45, 90]
 lrate_decay = 0.1
@@ -59,8 +56,7 @@ reset_bn = False
 num_workers = 4
 hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_init",
                    "weight_decay_init", "epochs","lrate", "milestones", "lrate_decay", 
-                   "weight_decay","batch_size", "num_workers", "optim_type", "reset_bn", 
-                   "class_aug", "fix_parameter", "first_reset_bn"]
+                   "weight_decay","batch_size", "num_workers", "optim_type", "reset_bn", "class_aug", "fix_parameter"]
 
 
 def is_fc(name):
@@ -74,23 +70,20 @@ def is_bn(name):
         return True
     else:
         return False
-    
-def is_kw(name):
-    if "kw" in name:
-        return True
-    else:
-        return False
 
-class multi_bn_pretrained_kw(BaseLearner):
+class single_bn_pretrained(BaseLearner):
     def __init__(self, args):
         super().__init__(args)
         self._networks = []
         self._convnet_type = args['convnet_type']
-        assert args['convnet_type'] == "resnet18_cbam_kw", "wrong convnet_type"
+        assert args['convnet_type'] == "resnet18_cbam", "wrong convnet_type"
         self._seed = args['seed']
         self._task_acc = []
         self._init_cls = args['init_cls']
         self._increment = args['increment']
+        self._class_num = [self._init_cls]
+        while sum(self._class_num) + self._increment <= 100:
+            self._class_num.append(self._increment)
 
         # log hyperparameter
         logging.info(50*"-")
@@ -102,17 +95,20 @@ class multi_bn_pretrained_kw(BaseLearner):
     def after_task(self):
         self._known_classes = self._total_classes
 
-        weighted_accs = self.caculate_weighted_average(self._init_cls, self._increment, self._task_acc)
-        logging.info(50*"-")
-        logging.info("log_accs")
-        logging.info(50*"-")
+        # weighted_accs = self.caculate_weighted_average(self._init_cls, self._increment, self._task_acc)
+        # logging.info(50*"-")
+        # logging.info("log_accs")
+        # logging.info(50*"-")
         
-        logging.info("task acc is {}".format(self._task_acc))
-        logging.info("weighted acc is {}".format(weighted_accs))
+        # logging.info("task acc is {}".format(self._task_acc))
+        # logging.info("weighted acc is {}".format(weighted_accs))
 
         if self._cur_task == 0:
-            if not os.path.exists("./saved_model/multi_bn_pretrained_kw_{}.pth".format(self._seed)):
-                torch.save(self._networks[self._cur_task].state_dict(), "./saved_model/multi_bn_pretrained_kw_{}.pth".format(self._seed))
+            if not os.path.exists("./saved_model/single_bn_pretrained_{}.pth".format(self._seed)):
+                torch.save(self._networks[self._cur_task].state_dict(), "./saved_model/single_bn_pretrained_{}.pth".format(self._seed))
+            # else:
+            #     print(self._networks[0].convnet.state_dict()["conv1.weight"][0])
+            #     print(self._networks[self._cur_task].convnet.state_dict()["conv1.weight"][0])
 
     def incremental_train(self, data_manager):
         self._cur_task += 1
@@ -123,7 +119,7 @@ class multi_bn_pretrained_kw(BaseLearner):
         if self._cur_task == 0:
             #load pretrained model
             state_dict = self._networks[self._cur_task].convnet.state_dict()
-            pretrained_dict = torch.load("./saved_parameters/imagenet200_simsiam_pretrained_model_kw.pth")
+            pretrained_dict = torch.load("./saved_parameters/imagenet200_simsiam_pretrained_model.pth")
             state_dict.update(pretrained_dict)
             self._networks[self._cur_task].convnet.load_state_dict(state_dict)
 
@@ -133,12 +129,12 @@ class multi_bn_pretrained_kw(BaseLearner):
                 self._networks[self._cur_task].update_fc(self.augnumclass)
             else:
                 self._networks[self._cur_task].update_fc(self._cur_class)
-            if first_reset_bn:
-                self.reset_bn(self._networks[self._cur_task])
+            # self._network.update_fc(self.augnumclass)
         else:
             self._networks[self._cur_task].update_fc(data_manager.get_task_size(self._cur_task))
             state_dict = self._networks[self._cur_task].convnet.state_dict()
-            state_dict.update(self._networks[0].convnet.state_dict())
+            #load the parameter of last model
+            state_dict.update(self._networks[self._cur_task - 1].convnet.state_dict())
             # print(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"])
             
             self._networks[self._cur_task].convnet.load_state_dict(state_dict)
@@ -146,6 +142,7 @@ class multi_bn_pretrained_kw(BaseLearner):
             # self._networks[self._cur_task].state_dict().update(self._networks[0].state_dict())
             if reset_bn:
                 self.reset_bn(self._networks[self._cur_task].convnet)
+            # print(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"])
         
         logging.info('Learning on {}-{}'.format(self._known_classes, self._total_classes))
 
@@ -163,13 +160,16 @@ class multi_bn_pretrained_kw(BaseLearner):
         
         self._train(self._networks[self._cur_task], self.train_loader, self.test_loader)
 
+        if self._cur_task == len(self._class_num) - 1:
+            self.final_test(data_manager)
+
     def _train(self, model, train_loader, test_loader):
         model.to(self._device)
         
         if self._cur_task == 0:
             if fix_parameter:
                 for name, param in model.named_parameters():
-                    if is_fc(name) or is_bn(name) or is_kw(name):
+                    if is_fc(name) or is_bn(name):
                         param.requires_grad = True
                     else:
                         param.requires_grad = False
@@ -190,7 +190,7 @@ class multi_bn_pretrained_kw(BaseLearner):
                         # param.requires_grad = True
         else:
             for name, param in model.named_parameters():
-                if is_fc(name) or is_bn(name) or is_kw(name):
+                if is_fc(name) or is_bn(name):
                     param.requires_grad = True
                 else:
                     param.requires_grad = False
@@ -210,6 +210,7 @@ class multi_bn_pretrained_kw(BaseLearner):
     def reset_bn(self, model):
         for m in model.modules():
             if isinstance(m, nn.BatchNorm2d):
+                # print("reset_bn")
                 m.reset_running_stats()
                 m.reset_parameters()
 
@@ -238,6 +239,7 @@ class multi_bn_pretrained_kw(BaseLearner):
                     logits = model(inputs)['logits']
 
                 loss = nn.CrossEntropyLoss()(logits/temp, targets - self._known_classes)
+                # loss = F.binary_cross_entropy_with_logits(logits, onehots)
 
                 optimizer.zero_grad()
                 loss.backward()
@@ -261,8 +263,9 @@ class multi_bn_pretrained_kw(BaseLearner):
             scheduler.step()
             train_acc = np.around(tensor2numpy(correct)*100 / total, decimals=2)
             test_acc = self._compute_accuracy(model, test_loader)
-            if epoch == epochs_num - 1:
-                self._task_acc.append(round(test_acc, 2))
+            # if epoch == epochs_num - 1:
+            #     self._task_acc.append(round(test_acc, 2))
+            
             info = 'Task {}, Epoch {}/{} => Loss {:.3f}, Train_accy {:.2f}, Test_accy {:.2f}'.format(
                 self._cur_task, epoch+1, epochs_num, losses/len(train_loader), train_acc, test_acc)
             prog_bar.set_description(info)
@@ -326,7 +329,7 @@ class multi_bn_pretrained_kw(BaseLearner):
                 y_b = tmp
             label_index = int(((2 * self._cur_class - y_a - 1) * y_a) / 2 + (y_b - y_a) - 1)
         return label_index + self._total_classes
-    
+
     def caculate_weighted_average(self, init_class, increment, task_acc):
         weighted_accs = []
         class_each_step = []
@@ -343,3 +346,36 @@ class multi_bn_pretrained_kw(BaseLearner):
             weighted_accs.append(round(sum(task_acc[:i+1] * temp), 2))
         
         return weighted_accs
+
+    def final_test(self, data_manager):
+        self._known_classes = 0
+        total_classes = 0
+        task_nums = len(self._class_num)
+        self._task_acc = []
+
+        for i in range(task_nums):
+            cur_class = self._class_num[i]
+            total_classes += cur_class
+            
+            test_dataset = data_manager.get_dataset(np.arange(self._known_classes, total_classes), source='test', 
+                                                mode='test')
+            test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+            
+            if i != task_nums - 1:
+                state_dict = self._networks[i].convnet.state_dict()
+                state_dict.update(self._networks[task_nums - 1].convnet.state_dict())
+                self._networks[i].convnet.load_state_dict(state_dict)
+
+            test_acc = self._compute_accuracy(self._networks[i], test_loader)
+            self._task_acc.append(test_acc)
+            
+
+            self._known_classes = total_classes
+        
+        weighted_accs = self.caculate_weighted_average(self._init_cls, self._increment, self._task_acc)
+        logging.info(50*"-")
+        logging.info("log_accs")
+        logging.info(50*"-")
+        
+        logging.info("task acc is {}".format(self._task_acc))
+        logging.info("weighted acc is {}".format(weighted_accs))
