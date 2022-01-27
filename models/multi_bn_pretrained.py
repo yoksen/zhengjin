@@ -36,6 +36,8 @@ lrate_decay = 0.1
 weight_decay = 2e-4  # illness
 optim_type = "adam"
 batch_size = 64
+#temp is used for softmax default 0.1
+temp = 1.0
 
 
 # CIFAR100, ResNet32
@@ -58,7 +60,7 @@ num_workers = 4
 hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_init",
                    "weight_decay_init", "epochs","lrate", "milestones", "lrate_decay", 
                    "weight_decay","batch_size", "num_workers", "optim_type", "reset_bn", 
-                   "class_aug", "fix_parameter", "update_bn_with_last_model"]
+                   "class_aug", "fix_parameter", "update_bn_with_last_model", "temp"]
 
 
 def is_fc(name):
@@ -222,7 +224,7 @@ class multi_bn_pretrained(BaseLearner):
         prog_bar = tqdm(range(epochs_num))
 
         #if temp < 1, it will make the output of softmax sharper
-        temp = 0.1
+        # temp = 0.1
         for _, epoch in enumerate(prog_bar):
             model.train()
             losses = 0.
@@ -341,7 +343,7 @@ class multi_bn_pretrained(BaseLearner):
         task_acc = np.array(task_acc)
 
         for i in range(len(task_acc)):
-            temp = class_each_step[:i+1] / sum(class_each_step[:i+1])
-            weighted_accs.append(round(sum(task_acc[:i+1] * temp), 2))
+            temp_acc = class_each_step[:i+1] / sum(class_each_step[:i+1])
+            weighted_accs.append(round(sum(task_acc[:i+1] * temp_acc), 2))
         
         return weighted_accs
