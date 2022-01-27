@@ -25,6 +25,8 @@ lrate_decay_init = 0.1
 weight_decay_init = 2e-4
 class_aug = False
 fix_parameter = False
+reset_bn = False
+update_bn_with_last_model = True
 
 epochs = 101
 # epochs = 5
@@ -34,7 +36,6 @@ lrate_decay = 0.1
 weight_decay = 2e-4  # illness
 optim_type = "adam"
 batch_size = 64
-reset_bn = True
 
 
 # CIFAR100, ResNet32
@@ -56,7 +57,8 @@ reset_bn = True
 num_workers = 4
 hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_init",
                    "weight_decay_init", "epochs","lrate", "milestones", "lrate_decay", 
-                   "weight_decay","batch_size", "num_workers", "optim_type", "reset_bn", "class_aug", "fix_parameter"]
+                   "weight_decay","batch_size", "num_workers", "optim_type", "reset_bn", 
+                   "class_aug", "fix_parameter", "update_bn_with_last_model"]
 
 
 def is_fc(name):
@@ -131,7 +133,10 @@ class multi_bn_pretrained(BaseLearner):
         else:
             self._networks[self._cur_task].update_fc(data_manager.get_task_size(self._cur_task))
             state_dict = self._networks[self._cur_task].convnet.state_dict()
-            state_dict.update(self._networks[0].convnet.state_dict())
+            if update_bn_with_last_model:
+                state_dict.update(self._networks[self._cur_task - 1].convnet.state_dict())
+            else:
+                state_dict.update(self._networks[0].convnet.state_dict())
             # print(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"])
             
             self._networks[self._cur_task].convnet.load_state_dict(state_dict)
