@@ -17,8 +17,8 @@ from convs.linears import SimpleLinear
 EPSILON = 1e-8
 
 # CIFAR100, resnet18_cbam
-# epochs_init = 101
-epochs_init = 2
+epochs_init = 101
+# epochs_init = 2
 lrate_init = 1e-4
 milestones_init = [45, 90]
 lrate_decay_init = 0.1
@@ -26,8 +26,8 @@ weight_decay_init = 2e-4
 class_aug = False
 fix_parameter = False
 
-# epochs = 101
-epochs = 2
+epochs = 101
+# epochs = 2
 lrate = 1e-3
 milestones = [45, 90]
 lrate_decay = 0.1
@@ -35,7 +35,6 @@ weight_decay = 2e-4  # illness
 optim_type = "adam"
 batch_size = 64
 reset_bn = False
-
 
 # CIFAR100, ResNet32
 # epochs_init = 70
@@ -56,7 +55,8 @@ reset_bn = False
 num_workers = 4
 hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_init",
                    "weight_decay_init", "epochs","lrate", "milestones", "lrate_decay", 
-                   "weight_decay","batch_size", "num_workers", "optim_type", "reset_bn", "class_aug", "fix_parameter"]
+                   "weight_decay","batch_size", "num_workers", "optim_type", "reset_bn", 
+                   "class_aug", "fix_parameter"]
 
 
 def is_fc(name):
