@@ -17,15 +17,15 @@ from convs.linears import SimpleLinear
 EPSILON = 1e-8
 
 # CIFAR100, resnet18_cbam
-# epochs_init = 101
-epochs_init = 5
+epochs_init = 101
+# epochs_init = 5
 lrate_init = 1e-4
 milestones_init = [45, 90]
 lrate_decay_init = 0.1
 weight_decay_init = 2e-4
 
-# epochs = 101
-epochs = 5
+epochs = 101
+# epochs = 5
 lrate = 1e-3
 milestones = [45, 90]
 lrate_decay = 0.1
@@ -42,7 +42,9 @@ fix_parameter = False
 
 #update bn type
 #["default", "last", "first", "pretrained"]
-bn_type = "default"
+# bn_type = "default"
+# bn_type = "last"
+bn_type = "first"
 
 
 # CIFAR100, ResNet32
@@ -155,8 +157,8 @@ class multi_bn_pretrained(BaseLearner):
                 self._networks[self._cur_task].convnet.load_state_dict(state_dict)
             elif bn_type == "first":
                 logging.info("update_bn_with_first_model")
-                self._networks[self._cur_task].convnet.load_state_dict(state_dict)
                 state_dict.update(self._networks[0].convnet.state_dict())
+                self._networks[self._cur_task].convnet.load_state_dict(state_dict)
             else:
                 #to be finished
                 pass
