@@ -283,16 +283,23 @@ def resnet152_cbam(pretrained=False, **kwargs):
 
 
 if __name__ == "__main__":
-    model = resnet18_cbam()
-    # pretrained_dict = torch.load("../saved_parameters/imagenet200_simsiam_pretrained_model.pth")
+    # model = resnet18_cbam()
+    # # pretrained_dict = torch.load("../saved_parameters/imagenet200_simsiam_pretrained_model.pth")
 
-    for name, param in model.named_parameters():
-        if "bn" in name or "downsample.1" in name:
-        #     print(name)
-        # if "conv" not in name and "downsample.0" not in name and "norm" not in name:
-        #     print(name)
-        # if "conv" not in name and "downsample.0" not in name:
-            print(name)
+    # for name, param in model.named_parameters():
+    #     if "bn" in name or "downsample.1" in name:
+    #     #     print(name)
+    #     # if "conv" not in name and "downsample.0" not in name and "norm" not in name:
+    #     #     print(name)
+    #     # if "conv" not in name and "downsample.0" not in name:
+    #         print(name)
+
+    pretrained_dict = torch.load("./saved_parameters/imagenet200_simsiam_pretrained_model.pth")
+    dst_dict = OrderedDict()
+    for k, v in pretrained_dict.items():
+        if "conv" not in k and "downsample.0" not in k:
+            dst_dict[k] = v
+    torch.save(dst_dict, "./saved_parameters/imagenet200_simsiam_pretrained_model_bn.pth")
             
 
     # state_dict = model.state_dict()
@@ -311,68 +318,3 @@ if __name__ == "__main__":
     #         changed_dict[".".join(k.split(".")[1:])] = v
     
     # torch.save(changed_dict, "/data/junjie/code/zhengjin/saved_parameters/imagenet200_simsiam_pretrained_model.pth")
-
-    # norm.mean                   
-    # norm.std                  
-    # conv1.weight         
-    # bn1.weight         
-    # bn1.bias         
-    # layer1.0.conv1.weight
-    # layer1.0.bn1.weight
-    # layer1.0.bn1.bias
-    # layer1.0.conv2.weight 
-    # layer1.0.bn1.bias                                                                                                                                                                                                                                     [0/1912]
-    # layer1.0.conv2.weight
-    # layer1.0.bn2.weight
-    # layer1.0.bn2.bias
-    # layer1.1.conv1.weight
-    # layer1.1.bn1.weight
-    # layer1.1.bn1.bias
-    # layer1.1.conv2.weight       
-    # layer1.1.bn2.weight         
-    # layer1.1.bn2.bias         
-    # layer2.0.conv1.weight
-    # layer2.0.bn1.weight
-    # layer2.0.bn1.bias
-    # layer2.0.conv2.weight
-    # layer2.0.bn2.weight
-    # layer2.0.bn2.bias
-    # layer2.0.downsample.0.weight
-    # layer2.0.downsample.1.weight
-    # layer2.0.downsample.1.bias
-    # layer2.1.conv1.weight
-    # layer2.1.bn1.weight
-    # layer2.1.bn1.bias
-    # layer2.1.conv2.weight       
-    # layer2.1.bn2.weight         
-    # layer2.1.bn2.bias         
-    # layer3.0.conv1.weight
-    # layer3.0.bn1.weight
-    # layer3.0.bn1.bias
-    # layer3.0.conv2.weight
-    # layer3.0.bn2.weight
-    # layer3.0.bn2.bias
-    # layer3.0.downsample.0.weight
-    # layer3.0.downsample.1.weight
-    # layer3.0.downsample.1.bias
-    # layer3.1.conv1.weight
-    # layer3.1.bn1.weight
-    # layer3.1.bn1.bias
-    # layer3.1.conv2.weight       
-    # layer3.1.bn2.weight         
-    # layer3.1.bn2.bias         
-    # layer4.0.conv1.weight
-    # layer4.0.bn1.weight
-    # layer4.0.bn1.bias
-    # layer4.0.conv2.weight
-    # layer4.0.bn2.weight
-    # layer4.0.bn2.bias
-    # layer4.0.downsample.0.weight                                                                                                   
-    # layer4.0.downsample.1.weight
-    # layer4.0.downsample.1.bias
-    # layer4.1.conv1.weight
-    # layer4.1.bn1.weight
-    # layer4.1.bn1.bias
-    # layer4.1.conv2.weight
-    # layer4.1.bn2.weight
-    # layer4.1.bn2.bias

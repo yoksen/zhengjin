@@ -1,5 +1,6 @@
 import logging
 from statistics import mode
+from typing import OrderedDict
 from matplotlib.pyplot import cla
 import numpy as np
 import os
@@ -44,7 +45,8 @@ fix_parameter = False
 #["default", "last", "first", "pretrained"]
 # bn_type = "default"
 # bn_type = "last"
-bn_type = "first"
+# bn_type = "first"
+bn_type = "pretrained"
 
 
 # CIFAR100, ResNet32
@@ -161,7 +163,17 @@ class multi_bn_pretrained(BaseLearner):
                 self._networks[self._cur_task].convnet.load_state_dict(state_dict)
             else:
                 #to be finished
-                pass
+                logging.info("update_bn_with_pretrained_model")
+                state_dict.update(self._networks[self._cur_task - 1].convnet.state_dict())
+                # pretrained_dict = torch.load("./saved_parameters/imagenet200_simsiam_pretrained_model.pth")
+                # dst_dict = OrderedDict()
+                # for k, v in pretrained_dict.items():
+                #     if "conv" not in k and "downsample.0" not in k:
+                #         dst_dict[k] = v
+                # torch.save(dst_dict, "./saved_parameters/imagenet200_simsiam_pretrained_model_bn.pth")
+                dst_dict = torch.load("./saved_parameters/imagenet200_simsiam_pretrained_model_bn.pth")
+                state_dict.update(dst_dict)
+                self._networks[self._cur_task].convnet.load_state_dict(state_dict)
     
             logging.info("layer4.1.bn2.running_mean after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"][:5]))
             logging.info("layer4.1.bn2.weight after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.weight"][:5]))
