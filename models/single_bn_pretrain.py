@@ -18,23 +18,29 @@ EPSILON = 1e-8
 
 # CIFAR100, resnet18_cbam
 epochs_init = 101
-# epochs_init = 2
+# epochs_init = 5
 lrate_init = 1e-4
 milestones_init = [45, 90]
 lrate_decay_init = 0.1
 weight_decay_init = 2e-4
-class_aug = False
-fix_parameter = False
 
 epochs = 101
-# epochs = 2
+# epochs = 5
 lrate = 1e-3
 milestones = [45, 90]
 lrate_decay = 0.1
 weight_decay = 2e-4  # illness
 optim_type = "adam"
 batch_size = 64
-reset_bn = False
+#temp is used for softmax default 0.1
+temp = 0.1
+
+#whether first session using class augmentation
+class_aug = False
+#whether first session fix convs layers
+fix_parameter = False
+
+
 
 # CIFAR100, ResNet32
 # epochs_init = 70
@@ -55,8 +61,8 @@ reset_bn = False
 num_workers = 4
 hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_init",
                    "weight_decay_init", "epochs","lrate", "milestones", "lrate_decay", 
-                   "weight_decay","batch_size", "num_workers", "optim_type", "reset_bn", 
-                   "class_aug", "fix_parameter"]
+                   "weight_decay", "batch_size", "num_workers", "optim_type", "class_aug", 
+                   "fix_parameter", "temp"]
 
 
 def is_fc(name):
@@ -82,6 +88,8 @@ class single_bn_pretrained(BaseLearner):
         self._init_cls = args['init_cls']
         self._increment = args['increment']
         self._class_num = [self._init_cls]
+        self._weighted_accs = []
+        self._acc_of_every_task = []
         while sum(self._class_num) + self._increment <= 100:
             self._class_num.append(self._increment)
 
@@ -95,20 +103,9 @@ class single_bn_pretrained(BaseLearner):
     def after_task(self):
         self._known_classes = self._total_classes
 
-        # weighted_accs = self.caculate_weighted_average(self._init_cls, self._increment, self._task_acc)
-        # logging.info(50*"-")
-        # logging.info("log_accs")
-        # logging.info(50*"-")
-        
-        # logging.info("task acc is {}".format(self._task_acc))
-        # logging.info("weighted acc is {}".format(weighted_accs))
-
         if self._cur_task == 0:
             if not os.path.exists("./saved_model/single_bn_pretrained_{}.pth".format(self._seed)):
                 torch.save(self._networks[self._cur_task].state_dict(), "./saved_model/single_bn_pretrained_{}.pth".format(self._seed))
-            # else:
-            #     print(self._networks[0].convnet.state_dict()["conv1.weight"][0])
-            #     print(self._networks[self._cur_task].convnet.state_dict()["conv1.weight"][0])
 
     def incremental_train(self, data_manager):
         self._cur_task += 1
@@ -116,12 +113,21 @@ class single_bn_pretrained(BaseLearner):
         self._total_classes = self._known_classes + self._cur_class
 
         self._networks.append(IncrementalNet(self._convnet_type, False))
+        self._acc_of_every_task.append([])
+
         if self._cur_task == 0:
             #load pretrained model
             state_dict = self._networks[self._cur_task].convnet.state_dict()
+            logging.info("layer4.1.bn2.running_mean before update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"][:5]))
+            logging.info("layer4.1.bn2.weight before update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.weight"][:5]))
+            logging.info("layer4.1.bn2.bias before update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.bias"][:5]))
+
             pretrained_dict = torch.load("./saved_parameters/imagenet200_simsiam_pretrained_model.pth")
             state_dict.update(pretrained_dict)
             self._networks[self._cur_task].convnet.load_state_dict(state_dict)
+            logging.info("layer4.1.bn2.running_mean after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"][:5]))
+            logging.info("layer4.1.bn2.weight after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.weight"][:5]))
+            logging.info("layer4.1.bn2.bias after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.bias"][:5]))
 
             #compare the difference between using and unusing class augmentation in first session
             if class_aug:
@@ -133,17 +139,17 @@ class single_bn_pretrained(BaseLearner):
         else:
             self._networks[self._cur_task].update_fc(data_manager.get_task_size(self._cur_task))
             state_dict = self._networks[self._cur_task].convnet.state_dict()
+            logging.info("layer4.1.bn2.running_mean before update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"][:5]))
+            logging.info("layer4.1.bn2.weight before update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.weight"][:5]))
+            logging.info("layer4.1.bn2.bias before update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.bias"][:5]))
+            
             #load the parameter of last model
             state_dict.update(self._networks[self._cur_task - 1].convnet.state_dict())
-            # print(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"])
-            
             self._networks[self._cur_task].convnet.load_state_dict(state_dict)
-            # print(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"])
-            # self._networks[self._cur_task].state_dict().update(self._networks[0].state_dict())
-            if reset_bn:
-                self.reset_bn(self._networks[self._cur_task].convnet)
-            # print(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"])
-        
+            logging.info("layer4.1.bn2.running_mean after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"][:5]))
+            logging.info("layer4.1.bn2.weight after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.weight"][:5]))
+            logging.info("layer4.1.bn2.bias after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.bias"][:5]))
+
         logging.info('Learning on {}-{}'.format(self._known_classes, self._total_classes))
 
         # Loader
@@ -160,17 +166,20 @@ class single_bn_pretrained(BaseLearner):
         
         self._train(self._networks[self._cur_task], self.train_loader, self.test_loader)
 
-        # if self._cur_task == len(self._class_num) - 1:
-        #     self.final_test(data_manager)
+        logging.info("layer4.1.bn2.running_mean after training: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"][:5]))
+        logging.info("layer4.1.bn2.weight after training: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.weight"][:5]))
+        logging.info("layer4.1.bn2.bias after training: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.bias"][:5]))
+
         self.final_test(data_manager)
 
     def _train(self, model, train_loader, test_loader):
         model.to(self._device)
-        
         if self._cur_task == 0:
             if fix_parameter:
+                logging.info("parameters need grad")
                 for name, param in model.named_parameters():
                     if is_fc(name) or is_bn(name):
+                        logging.info(name)
                         param.requires_grad = True
                     else:
                         param.requires_grad = False
@@ -185,35 +194,20 @@ class single_bn_pretrained(BaseLearner):
                 else:
                     optimizer = optim.SGD(model.parameters(), lr=lrate_init, momentum=0.9, weight_decay=weight_decay_init)  # 1e-3
             scheduler = optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=milestones_init, gamma=lrate_decay_init)
-                # for name, param in model.named_parameters():
-                #     if param.requires_grad:
-                #         print(name)
-                        # param.requires_grad = True
         else:
+            logging.info("parameters need grad")
             for name, param in model.named_parameters():
                 if is_fc(name) or is_bn(name):
+                    logging.info(name)
                     param.requires_grad = True
                 else:
                     param.requires_grad = False
-            
-            # for name, param in model.named_parameters():
-            #     if param.requires_grad:
-            #         print(name)
-                    # param.requires_grad = True
-            
             if optim_type == "adam":
                 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lrate, weight_decay=weight_decay)
             else:
                 optimizer = optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr=lrate, weight_decay=weight_decay)
             scheduler = optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=milestones, gamma=lrate_decay)
         self._update_representation(model, train_loader, test_loader, optimizer, scheduler)
-
-    def reset_bn(self, model):
-        for m in model.modules():
-            if isinstance(m, nn.BatchNorm2d):
-                # print("reset_bn")
-                m.reset_running_stats()
-                m.reset_parameters()
 
     def _update_representation(self, model, train_loader, test_loader, optimizer, scheduler):
         if self._cur_task == 0:
@@ -264,8 +258,6 @@ class single_bn_pretrained(BaseLearner):
             scheduler.step()
             train_acc = np.around(tensor2numpy(correct)*100 / total, decimals=2)
             test_acc = self._compute_accuracy(model, test_loader)
-            # if epoch == epochs_num - 1:
-            #     self._task_acc.append(round(test_acc, 2))
             
             info = 'Task {}, Epoch {}/{} => Loss {:.3f}, Train_accy {:.2f}, Test_accy {:.2f}'.format(
                 self._cur_task, epoch+1, epochs_num, losses/len(train_loader), train_acc, test_acc)
@@ -369,15 +361,21 @@ class single_bn_pretrained(BaseLearner):
                 self._networks[i].convnet.load_state_dict(state_dict)
 
             test_acc = self._compute_accuracy(self._networks[i], test_loader)
+            self._acc_of_every_task[i].append(test_acc)
             self._task_acc.append(test_acc)
             
 
             self._known_classes = total_classes
         
         weighted_accs = self.caculate_weighted_average(self._init_cls, self._increment, self._task_acc)
+        self._weighted_accs.append(weighted_accs[-1])
         logging.info(50*"-")
         logging.info("log_accs")
         logging.info(50*"-")
         
         logging.info("task acc is {}".format(self._task_acc))
         logging.info("weighted acc is {}".format(weighted_accs))
+
+        logging.info("task acc of every task is {}".format(self._acc_of_every_task))
+        logging.info("weighted acc of every task is {}".format(self._weighted_accs))
+
