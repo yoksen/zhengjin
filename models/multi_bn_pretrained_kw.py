@@ -13,12 +13,13 @@ from models.base import BaseLearner
 from utils.inc_net import IncrementalNet
 from utils.toolkit import target2onehot, tensor2numpy
 from convs.linears import SimpleLinear
+from collections import OrderedDict
 
 EPSILON = 1e-8
 
 # CIFAR100, resnet18_cbam_kw
-epochs_init = 101
-# epochs_init = 5
+# epochs_init = 101
+epochs_init = 5
 lrate_init = 1e-4
 milestones_init = [45, 90]
 lrate_decay_init = 0.1
@@ -27,18 +28,19 @@ class_aug = False
 #whether the first session we should fix the conv layers
 fix_parameter = False
 #whether the first session we should reset the BN layers
-first_reset_bn = False
 
-epochs = 101
-# epochs = 5
+# epochs = 101
+epochs = 5
 lrate = 1e-3
 milestones = [45, 90]
 lrate_decay = 0.1
 weight_decay = 2e-4  # illness
 optim_type = "adam"
 batch_size = 64
-reset_bn = False
+#temp is used for softmax default 0.1
+temp = 0.1
 
+reset_bn = False
 
 # CIFAR100, ResNet32
 # epochs_init = 70
@@ -59,8 +61,8 @@ reset_bn = False
 num_workers = 4
 hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_init",
                    "weight_decay_init", "epochs","lrate", "milestones", "lrate_decay", 
-                   "weight_decay","batch_size", "num_workers", "optim_type", "reset_bn", 
-                   "class_aug", "fix_parameter", "first_reset_bn"]
+                   "weight_decay", "batch_size", "num_workers", "optim_type", "reset_bn", 
+                   "class_aug", "fix_parameter", "temp"]
 
 
 def is_fc(name):
@@ -87,7 +89,7 @@ class multi_bn_pretrained_kw(BaseLearner):
         super().__init__(args)
         self._networks = []
         self._convnet_type = args['convnet_type']
-        assert args['convnet_type'] == "resnet18_cbam_kw", "wrong convnet_type"
+        # assert args['convnet_type'] == "resnet18_cbam_kw", "wrong convnet_type"
         self._seed = args['seed']
         self._task_acc = []
         self._init_cls = args['init_cls']
@@ -120,13 +122,20 @@ class multi_bn_pretrained_kw(BaseLearner):
         self._cur_class = data_manager.get_task_size(self._cur_task)
         self._total_classes = self._known_classes + self._cur_class
 
-        self._networks.append(IncrementalNet(self._convnet_type, False))
         if self._cur_task == 0:
             #load pretrained model
+            self._networks.append(IncrementalNet(self._convnet_type, False))
             state_dict = self._networks[self._cur_task].convnet.state_dict()
-            pretrained_dict = torch.load("./saved_parameters/imagenet200_simsiam_pretrained_model_kw.pth")
+            logging.info("layer4.1.bn2.running_mean before update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"][:5]))
+            logging.info("layer4.1.bn2.weight before update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.weight"][:5]))
+            logging.info("layer4.1.bn2.bias before update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.bias"][:5]))
+
+            pretrained_dict = torch.load("./saved_parameters/imagenet200_simsiam_pretrained_model.pth")
             state_dict.update(pretrained_dict)
             self._networks[self._cur_task].convnet.load_state_dict(state_dict)
+            logging.info("layer4.1.bn2.running_mean after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"][:5]))
+            logging.info("layer4.1.bn2.weight after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.weight"][:5]))
+            logging.info("layer4.1.bn2.bias after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.bias"][:5]))
 
             #compare the difference between using and unusing class augmentation in first session
             if class_aug:
@@ -134,17 +143,33 @@ class multi_bn_pretrained_kw(BaseLearner):
                 self._networks[self._cur_task].update_fc(self.augnumclass)
             else:
                 self._networks[self._cur_task].update_fc(self._cur_class)
-            if first_reset_bn:
-                self.reset_bn(self._networks[self._cur_task])
         else:
+            self._networks.append(IncrementalNet(self._convnet_type + "_kw", False))
             self._networks[self._cur_task].update_fc(data_manager.get_task_size(self._cur_task))
             state_dict = self._networks[self._cur_task].convnet.state_dict()
-            state_dict.update(self._networks[0].convnet.state_dict())
-            # print(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"])
-            
+            logging.info("layer4.1.bn2.running_mean before update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"][:5]))
+            logging.info("layer4.1.bn2.weight before update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.weight"][:5]))
+            logging.info("layer4.1.bn2.bias before update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.bias"][:5]))
+
+            #load state_dict
+            if self._cur_task == 1:
+                pretrained_dict = OrderedDict()
+                for k, v in self._networks[self._cur_task - 1].convnet.state_dict().items():
+                    if "downsample.1" in k:
+                        temp = k.split(".")
+                        temp[-2] = "2"
+                        pretrained_dict[".".join(temp)] = v
+                    else:
+                        pretrained_dict[k] = v
+            else:
+                pretrained_dict = self._networks[self._cur_task - 1].convnet.state_dict()
+
+            state_dict.update(pretrained_dict)
             self._networks[self._cur_task].convnet.load_state_dict(state_dict)
-            # print(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"])
-            # self._networks[self._cur_task].state_dict().update(self._networks[0].state_dict())
+            logging.info("layer4.1.bn2.running_mean after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"][:5]))
+            logging.info("layer4.1.bn2.weight after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.weight"][:5]))
+            logging.info("layer4.1.bn2.bias after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.bias"][:5]))
+            
             if reset_bn:
                 self.reset_bn(self._networks[self._cur_task].convnet)
         
@@ -169,8 +194,10 @@ class multi_bn_pretrained_kw(BaseLearner):
         
         if self._cur_task == 0:
             if fix_parameter:
+                logging.info("parameters need grad")
                 for name, param in model.named_parameters():
                     if is_fc(name) or is_bn(name) or is_kw(name):
+                        logging.info(name)
                         param.requires_grad = True
                     else:
                         param.requires_grad = False
@@ -185,21 +212,14 @@ class multi_bn_pretrained_kw(BaseLearner):
                 else:
                     optimizer = optim.SGD(model.parameters(), lr=lrate_init, momentum=0.9, weight_decay=weight_decay_init)  # 1e-3
             scheduler = optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=milestones_init, gamma=lrate_decay_init)
-                # for name, param in model.named_parameters():
-                #     if param.requires_grad:
-                #         print(name)
-                        # param.requires_grad = True
         else:
+            logging.info("parameters need grad")
             for name, param in model.named_parameters():
                 if is_fc(name) or is_bn(name) or is_kw(name):
+                    logging.info(name)
                     param.requires_grad = True
                 else:
                     param.requires_grad = False
-            
-            # for name, param in model.named_parameters():
-            #     if param.requires_grad:
-            #         print(name)
-                    # param.requires_grad = True
             
             if optim_type == "adam":
                 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lrate, weight_decay=weight_decay)
@@ -223,7 +243,6 @@ class multi_bn_pretrained_kw(BaseLearner):
         prog_bar = tqdm(range(epochs_num))
 
         #if temp < 1, it will make the output of softmax sharper
-        temp = 0.1
         for _, epoch in enumerate(prog_bar):
             model.train()
             losses = 0.
