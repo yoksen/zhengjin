@@ -177,13 +177,13 @@ def is_fc(name):
         return False
 
 def is_bn(name):
-    if "running_mean" in name or "running_var" in name or "num_batches_tracked" in name:
+    if "bn" in name or "downsample.2" in name:
         return True
     else:
         return False
-
+    
 def is_kw(name):
-    if "kw" in name:
+    if "kw" in name or "downsample.1" in name:
         return True
     else:
         return False
@@ -204,15 +204,18 @@ if __name__ == "__main__":
     # torch.save(state_dict, "/data/junjie/code/zhengjin/saved_parameters/imagenet200_simsiam_pretrained_model_kw.pth")
     
     model = resnet18_cbam_kw(normed=True)
-    pretrained_dict = torch.load("/data/junjie/code/zhengjin/saved_parameters/imagenet200_simsiam_pretrained_model_kw.pth")
-    state_dict = model.state_dict()
-    # print(state_dict["layer4.1.bn2.running_mean"])
+    for name, param in model.named_parameters():
+        if is_bn(name) or is_fc(name) or is_kw(name):
+            print(name)
+    # pretrained_dict = torch.load("/data/junjie/code/zhengjin/saved_parameters/imagenet200_simsiam_pretrained_model_kw.pth")
+    # state_dict = model.state_dict()
+    # # print(state_dict["layer4.1.bn2.running_mean"])
     
-    state_dict.update(pretrained_dict)
-    model.load_state_dict(state_dict)
-    for k, v in model.state_dict().items():
-        if is_bn(k) or is_fc(k) or is_kw(k):
-            print(k)
+    # state_dict.update(pretrained_dict)
+    # model.load_state_dict(state_dict)
+    # for k, v in model.state_dict().items():
+    #     if is_bn(k) or is_fc(k) or is_kw(k):
+    #         print(k)
     # print(model.state_dict()["layer4.1.bn2.running_mean"])
 
     # x = torch.randn(4, 3, 32, 32)

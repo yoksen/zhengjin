@@ -66,7 +66,7 @@ def is_fc(name):
         return False
 
 def is_bn(name):
-    if "running_mean" in name or "running_var" in name or "num_batches_tracked" in name:
+    if "bn" in name or "downsample.1" in name:
         return True
     else:
         return False

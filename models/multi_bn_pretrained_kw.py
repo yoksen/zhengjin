@@ -70,16 +70,17 @@ def is_fc(name):
         return False
 
 def is_bn(name):
-    if "running_mean" in name or "running_var" in name or "num_batches_tracked" in name:
+    if "bn" in name or "downsample.2" in name:
         return True
     else:
         return False
     
 def is_kw(name):
-    if "kw" in name:
+    if "kw" in name or "downsample.1" in name:
         return True
     else:
         return False
+
 
 class multi_bn_pretrained_kw(BaseLearner):
     def __init__(self, args):
