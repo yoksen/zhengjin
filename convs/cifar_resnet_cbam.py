@@ -294,12 +294,12 @@ if __name__ == "__main__":
     #     # if "conv" not in name and "downsample.0" not in name:
     #         print(name)
 
-    pretrained_dict = torch.load("./saved_parameters/imagenet200_simsiam_pretrained_model.pth")
+    pretrained_dict = torch.load("../saved_parameters/imagenet200_simsiam_pretrained_model.pth")
     dst_dict = OrderedDict()
     for k, v in pretrained_dict.items():
         if "conv" not in k and "downsample.0" not in k:
             dst_dict[k] = v
-    torch.save(dst_dict, "./saved_parameters/imagenet200_simsiam_pretrained_model_bn.pth")
+    torch.save(dst_dict, "../saved_parameters/imagenet200_simsiam_pretrained_model_bn.pth")
             
 
     # state_dict = model.state_dict()

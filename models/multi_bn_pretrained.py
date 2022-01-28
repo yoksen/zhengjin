@@ -1,6 +1,5 @@
 import logging
 from statistics import mode
-from typing import OrderedDict
 from matplotlib.pyplot import cla
 import numpy as np
 import os
@@ -129,9 +128,17 @@ class multi_bn_pretrained(BaseLearner):
         if self._cur_task == 0:
             #load pretrained model
             state_dict = self._networks[self._cur_task].convnet.state_dict()
+            logging.info("layer4.1.bn2.running_mean before update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"][:5]))
+            logging.info("layer4.1.bn2.weight before update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.weight"][:5]))
+            logging.info("layer4.1.bn2.bias before update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.bias"][:5]))
+
             pretrained_dict = torch.load("./saved_parameters/imagenet200_simsiam_pretrained_model.pth")
             state_dict.update(pretrained_dict)
             self._networks[self._cur_task].convnet.load_state_dict(state_dict)
+
+            logging.info("layer4.1.bn2.running_mean after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"][:5]))
+            logging.info("layer4.1.bn2.weight after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.weight"][:5]))
+            logging.info("layer4.1.bn2.bias after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.bias"][:5]))
 
             #compare the difference between using and unusing class augmentation in first session
             if class_aug:
