@@ -44,8 +44,8 @@ fix_parameter = False
 #["default", "last", "first", "pretrained"]
 # bn_type = "default"
 # bn_type = "last"
-# bn_type = "first"
-bn_type = "pretrained"
+bn_type = "first"
+# bn_type = "pretrained"
 
 
 # CIFAR100, ResNet32
