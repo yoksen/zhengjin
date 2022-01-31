@@ -31,6 +31,7 @@ from models.multi_bn_pretrained import multi_bn_pretrained
 from models.multi_bn_pretrained_kw import multi_bn_pretrained_kw
 from models.single_bn_pretrain import single_bn_pretrained
 from models.multi_bn_mixup import multi_bn_mixup
+from models.multi_bn_pretrained_cl import multi_bn_pretrained_cl
 
 
 def get_model(model_name, args):
@@ -99,3 +100,5 @@ def get_model(model_name, args):
         return single_bn_pretrained(args)
     elif name == "multi_bn_mixup":
         return multi_bn_mixup(args)
+    elif name == "multi_bn_pretrained_cl":
+        return multi_bn_pretrained_cl(args)
