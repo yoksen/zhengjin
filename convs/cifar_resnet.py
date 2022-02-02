@@ -153,6 +153,18 @@ class CifarResNet(nn.Module):
             'features': features
         }
 
+    def is_fc(self, name):
+        if "fc" in name:
+            return True
+        else:
+            return False
+
+    def is_bn(self, name):
+        if "bn" in name:
+            return True
+        else:
+            return False
+
     @property
     def last_conv(self):
         return self.stage_3[-1].conv_b
@@ -203,7 +215,9 @@ def resnet110():
 if __name__ == "__main__":
     model = resnet32()
     for name, param in model.named_parameters():
+        # print(name)
         if "fc" in name or "bn" in name:
-            param.requires_grad = True
-        else:
-            param.requires_grad = False
+            print(name)
+        #     param.requires_grad = True
+        # else:
+        #     param.requires_grad = False

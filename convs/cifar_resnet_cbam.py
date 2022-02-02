@@ -211,6 +211,18 @@ class ResNet(nn.Module):
             'features': features
         }
 
+    def is_fc(self, name):
+        if "fc" in name:
+            return True
+        else:
+            return False
+
+    def is_bn(self, name):
+        if "bn" in name or "downsample.1" in name:
+            return True
+        else:
+            return False
+
 
 def resnet18_cbam(pretrained=False, normed=False, **kwargs):
     """Constructs a ResNet-18 model.

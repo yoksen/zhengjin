@@ -65,23 +65,23 @@ hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_
                    "class_aug", "fix_parameter", "temp"]
 
 
-def is_fc(name):
-    if "fc" in name:
-        return True
-    else:
-        return False
+# def is_fc(name):
+#     if "fc" in name:
+#         return True
+#     else:
+#         return False
 
-def is_bn(name):
-    if "bn" in name or "downsample.2" in name:
-        return True
-    else:
-        return False
+# def is_bn(name):
+#     if "bn" in name or "downsample.2" in name:
+#         return True
+#     else:
+#         return False
     
-def is_kw(name):
-    if "kw" in name or "downsample.1" in name:
-        return True
-    else:
-        return False
+# def is_kw(name):
+#     if "kw" in name or "downsample.1" in name:
+#         return True
+#     else:
+#         return False
 
 
 class multi_bn_pretrained_kw(BaseLearner):
@@ -196,7 +196,7 @@ class multi_bn_pretrained_kw(BaseLearner):
             if fix_parameter:
                 logging.info("parameters need grad")
                 for name, param in model.named_parameters():
-                    if is_fc(name) or is_bn(name) or is_kw(name):
+                    if model.convnet.is_fc(name) or model.convnet.is_bn(name) or model.convnet.is_kw(name):
                         logging.info(name)
                         param.requires_grad = True
                     else:
@@ -215,7 +215,7 @@ class multi_bn_pretrained_kw(BaseLearner):
         else:
             logging.info("parameters need grad")
             for name, param in model.named_parameters():
-                if is_fc(name) or is_bn(name) or is_kw(name):
+                if model.convnet.is_fc(name) or model.convnet.is_bn(name) or model.convnet.is_kw(name):
                     logging.info(name)
                     param.requires_grad = True
                 else:

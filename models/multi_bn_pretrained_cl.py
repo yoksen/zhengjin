@@ -17,15 +17,15 @@ from convs.linears import SimpleLinear
 EPSILON = 1e-8
 
 # CIFAR100, resnet18_cbam
-# epochs_init = 101
-epochs_init = 5
+epochs_init = 101
+# epochs_init = 5
 lrate_init = 1e-4
 milestones_init = [45, 90]
 lrate_decay_init = 0.1
 weight_decay_init = 2e-4
 
-# epochs = 101
-epochs = 5
+epochs = 101
+# epochs = 5
 lrate = 1e-3
 milestones = [45, 90]
 lrate_decay = 0.1
@@ -93,7 +93,7 @@ class multi_bn_pretrained_cl(BaseLearner):
         self._task_acc = []
         self._init_cls = args['init_cls']
         self._increment = args['increment']
-        self._class_num = [self._init_cls] + [self._increment] * (100 - self._init_cls) // self._increment
+        self._class_num = [self._init_cls] + [self._increment] * ((100 - self._init_cls) // self._increment)
 
         # log hyperparameter
         logging.info(50*"-")
@@ -319,10 +319,10 @@ class multi_bn_pretrained_cl(BaseLearner):
     def _compute_accuracy_cl(self, loader):
         correct, total = 0, 0
 
-        outputs = []
-        entropys = []
-        predicts = []
         for i, (_, inputs, targets) in enumerate(loader):
+            outputs = []
+            entropys = []
+            predicts = []
             inputs = inputs.to(self._device)
             for model in self._networks:
                 model.eval()
@@ -332,12 +332,12 @@ class multi_bn_pretrained_cl(BaseLearner):
                     entropy = (torch.sum(-torch.log(torch.nn.functional.softmax(output, dim=1)), dim=1) / output.shape[-1]).view(-1, 1)
                     entropys.append(entropy)
 
-            entropys = torch.concat(entropys, dim=1)
-            task_id = torch.min(entropys, 1)[1].item()
+            entropys = torch.cat(entropys, dim=1)
+            task_id = torch.min(entropys, 1)[1]
 
             for idx in range(inputs.shape[0]):
-                class_id = torch.max(outputs[task_id[idx]][idx], dim=0)[1].item()
-                predicts.append(self._class_num[:task_id] + class_id)
+                class_id = torch.max(outputs[task_id[idx].item()][idx], dim=0)[1].item()
+                predicts.append(sum(self._class_num[:task_id[idx].item()]) + class_id)
             
             predicts = torch.LongTensor(predicts)
             correct += (predicts.cpu() == targets).sum()

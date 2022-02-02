@@ -1,6 +1,7 @@
 import numpy as np
 import sys
 import os
+import pandas as pd
 from PIL import Image
 from torchvision import datasets, transforms
 from utils.toolkit import split_images_labels
@@ -108,6 +109,82 @@ class iImageNet1000(iData):
 
         self.train_data, self.train_targets = split_images_labels(train_dset.imgs)
         self.test_data, self.test_targets = split_images_labels(test_dset.imgs)
+
+class SD_198(iData):
+    use_path = True
+    train_trsf = [
+        transforms.Resize((224, 224)),
+        transforms.RandomHorizontalFlip(),
+    ]
+    test_trsf = [
+        transforms.Resize((224, 224)),
+    ]
+    common_trsf = [
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.60298395, 0.4887822, 0.46266827], std=[0.25993535, 0.24081337, 0.24418062]),
+    ]
+
+    class_order = np.arange(40).tolist()
+
+    def getdata(self, fn):
+        print(fn)
+        file = open(fn)
+        file_name_list = file.read().split('\n')
+        file.close()
+        data = []
+        targets = []
+        for file_name in file_name_list:
+            temp = file_name.split(' ')
+            if len(temp) == 2:
+                data.append(os.path.join(os.environ["SD198DATASETS"], 'images', temp[0]))
+                targets.append(int(temp[1]))
+        return np.array(data), np.array(targets)
+
+    def download_data(self):
+        train_dir = os.path.join(os.environ["SD198DATASETS"], "main_classes_split/train_1.txt")
+        test_dir = os.path.join(os.environ["SD198DATASETS"], "main_classes_split/val_1.txt")
+
+        self.train_data, self.train_targets = self.getdata(train_dir)
+        self.test_data, self.test_targets = self.getdata(test_dir)
+
+class Skin7(iData):
+    use_path = True
+    train_trsf = [
+        transforms.Resize((224, 224)),
+        transforms.RandomHorizontalFlip(),
+    ]
+
+    test_trsf = [
+        transforms.Resize((224, 224)),
+    ]
+
+    common_trsf = [
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.7720412, 0.54642653, 0.56280327], std=[0.13829944, 0.1553769, 0.17688483]),
+    ]
+
+    class_order = np.arange(7).tolist()
+
+    def getdata(self, fn):
+        print(fn)
+        csvfile = pd.read_csv(fn)
+        raw_data = csvfile.values
+
+        data = []
+        targets = []
+        for path, label in raw_data:
+            data.append(os.path.join(os.environ["SKIN7DATASETS"],
+                                     "ISIC2018_Task3_Training_Input", path))
+            targets.append(label)
+
+        return np.array(data), np.array(targets)
+
+    def download_data(self):
+        train_dir = os.path.join(os.environ["SKIN7DATASETS"], "split_data/split_data_1_fold_train.csv")
+        test_dir = os.path.join(os.environ["SKIN7DATASETS"], "split_data/split_data_1_fold_test.csv")
+
+        self.train_data, self.train_targets = self.getdata(train_dir)
+        self.test_data, self.test_targets = self.getdata(test_dir)
 
 class iImageNet100(iData):
     use_path = True
@@ -238,7 +315,6 @@ class iTinyImageNet200(iData):
 
         self.train_data, self.train_targets = split_images_labels(train_images)
         self.test_data, self.test_targets = split_images_labels(test_images)
-
 
 
 def pil_loader(path):

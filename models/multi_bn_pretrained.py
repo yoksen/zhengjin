@@ -71,17 +71,17 @@ hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_
                    "fix_parameter", "bn_type", "temp"]
 
 
-def is_fc(name):
-    if "fc" in name:
-        return True
-    else:
-        return False
+# def is_fc(name):
+#     if "fc" in name:
+#         return True
+#     else:
+#         return False
 
-def is_bn(name):
-    if "bn" in name or "downsample.1" in name:
-        return True
-    else:
-        return False
+# def is_bn(name):
+#     if "bn" in name or "downsample.1" in name:
+#         return True
+#     else:
+#         return False
 
 class multi_bn_pretrained(BaseLearner):
     def __init__(self, args):
@@ -213,7 +213,7 @@ class multi_bn_pretrained(BaseLearner):
             if fix_parameter:
                 logging.info("parameters need grad")
                 for name, param in model.named_parameters():
-                    if is_fc(name) or is_bn(name):
+                    if model.convnet.is_fc(name) or model.convnet.is_bn(name):
                         logging.info(name)
                         param.requires_grad = True
                     else:
@@ -232,7 +232,7 @@ class multi_bn_pretrained(BaseLearner):
         else:
             logging.info("parameters need grad")
             for name, param in model.named_parameters():
-                if is_fc(name) or is_bn(name):
+                if model.convnet.is_fc(name) or model.convnet.is_bn(name):
                     logging.info(name)
                     param.requires_grad = True
                 else:
