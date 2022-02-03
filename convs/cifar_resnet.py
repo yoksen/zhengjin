@@ -215,9 +215,9 @@ def resnet110():
 if __name__ == "__main__":
     model = resnet32()
     for name, param in model.named_parameters():
-        # print(name)
-        if "fc" in name or "bn" in name:
-            print(name)
+        print(name)
+        # if "fc" in name or "bn" in name:
+        #     print(name)
         #     param.requires_grad = True
         # else:
         #     param.requires_grad = False

@@ -43,8 +43,8 @@ fix_parameter = False
 #update bn type
 #["default", "last", "first", "pretrained"]
 # bn_type = "default"
-# bn_type = "last"
-bn_type = "first"
+bn_type = "last"
+# bn_type = "first"
 # bn_type = "pretrained"
 
 
@@ -88,7 +88,7 @@ class multi_bn_pretrained(BaseLearner):
         super().__init__(args)
         self._networks = []
         self._convnet_type = args['convnet_type']
-        assert args['convnet_type'] == "resnet18_cbam", "wrong convnet_type"
+        # assert args['convnet_type'] == "resnet18_cbam", "wrong convnet_type"
         self._seed = args['seed']
         self._task_acc = []
         self._init_cls = args['init_cls']
@@ -125,20 +125,30 @@ class multi_bn_pretrained(BaseLearner):
         self._total_classes = self._known_classes + self._cur_class
 
         self._networks.append(IncrementalNet(self._convnet_type, False))
+
+        if self._convnet_type == "resnet32":
+            dst_key = "stage_3.4.bn_b."
+        elif self._convnet_type == "resnet18_cbam":
+            dst_key = "layer4.1.bn2."
+
         if self._cur_task == 0:
             #load pretrained model
             state_dict = self._networks[self._cur_task].convnet.state_dict()
-            logging.info("layer4.1.bn2.running_mean before update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"][:5]))
-            logging.info("layer4.1.bn2.weight before update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.weight"][:5]))
-            logging.info("layer4.1.bn2.bias before update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.bias"][:5]))
+            logging.info("{}running_mean before update: {}".format(dst_key, self._networks[self._cur_task].convnet.state_dict()[dst_key + "running_mean"][:5]))
+            logging.info("{}weight before update: {}".format(dst_key, self._networks[self._cur_task].convnet.state_dict()[dst_key + "weight"][:5]))
+            logging.info("{}bias before update: {}".format(dst_key, self._networks[self._cur_task].convnet.state_dict()[dst_key + "bias"][:5]))
 
-            pretrained_dict = torch.load("./saved_parameters/imagenet200_simsiam_pretrained_model.pth")
+            if self._convnet_type == "resnet32":
+                pretrained_dict = torch.load("./saved_parameters/imagenet200_model_32.pth")
+            elif self._convnet_type == "resnet18_cbam":
+                pretrained_dict = torch.load("./saved_parameters/imagenet200_simsiam_pretrained_model.pth")
+            
             state_dict.update(pretrained_dict)
             self._networks[self._cur_task].convnet.load_state_dict(state_dict)
 
-            logging.info("layer4.1.bn2.running_mean after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"][:5]))
-            logging.info("layer4.1.bn2.weight after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.weight"][:5]))
-            logging.info("layer4.1.bn2.bias after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.bias"][:5]))
+            logging.info("{}running_mean after update: {}".format(dst_key, self._networks[self._cur_task].convnet.state_dict()[dst_key + "running_mean"][:5]))
+            logging.info("{}weight after update: {}".format(dst_key, self._networks[self._cur_task].convnet.state_dict()[dst_key + "weight"][:5]))
+            logging.info("{}bias after update: {}".format(dst_key, self._networks[self._cur_task].convnet.state_dict()[dst_key + "bias"][:5]))
 
             #compare the difference between using and unusing class augmentation in first session
             if class_aug:
@@ -150,10 +160,10 @@ class multi_bn_pretrained(BaseLearner):
         else:
             self._networks[self._cur_task].update_fc(data_manager.get_task_size(self._cur_task))
             state_dict = self._networks[self._cur_task].convnet.state_dict()
-            logging.info("layer4.1.bn2.running_mean before update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"][:5]))
-            logging.info("layer4.1.bn2.weight before update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.weight"][:5]))
-            logging.info("layer4.1.bn2.bias before update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.bias"][:5]))
-            
+            logging.info("{}running_mean before update: {}".format(dst_key, self._networks[self._cur_task].convnet.state_dict()[dst_key + "running_mean"][:5]))
+            logging.info("{}weight before update: {}".format(dst_key, self._networks[self._cur_task].convnet.state_dict()[dst_key + "weight"][:5]))
+            logging.info("{}bias before update: {}".format(dst_key, self._networks[self._cur_task].convnet.state_dict()[dst_key + "bias"][:5]))
+
             #["default", "last", "first", "pretrained"]
             if bn_type == "default":
                 logging.info("update_bn_with_default_setting")
@@ -182,9 +192,10 @@ class multi_bn_pretrained(BaseLearner):
                 state_dict.update(dst_dict)
                 self._networks[self._cur_task].convnet.load_state_dict(state_dict)
     
-            logging.info("layer4.1.bn2.running_mean after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"][:5]))
-            logging.info("layer4.1.bn2.weight after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.weight"][:5]))
-            logging.info("layer4.1.bn2.bias after update: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.bias"][:5]))
+            logging.info("{}running_mean after update: {}".format(dst_key, self._networks[self._cur_task].convnet.state_dict()[dst_key + "running_mean"][:5]))
+            logging.info("{}weight after update: {}".format(dst_key, self._networks[self._cur_task].convnet.state_dict()[dst_key + "weight"][:5]))
+            logging.info("{}bias after update: {}".format(dst_key, self._networks[self._cur_task].convnet.state_dict()[dst_key + "bias"][:5]))
+
 
         logging.info('Learning on {}-{}'.format(self._known_classes, self._total_classes))
 
@@ -202,9 +213,9 @@ class multi_bn_pretrained(BaseLearner):
         
         self._train(self._networks[self._cur_task], self.train_loader, self.test_loader)
 
-        logging.info("layer4.1.bn2.running_mean after training: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.running_mean"][:5]))
-        logging.info("layer4.1.bn2.weight after training: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.weight"][:5]))
-        logging.info("layer4.1.bn2.bias after training: {}".format(self._networks[self._cur_task].convnet.state_dict()["layer4.1.bn2.bias"][:5]))
+        logging.info("{}running_mean after training: {}".format(dst_key, self._networks[self._cur_task].convnet.state_dict()[dst_key + "running_mean"][:5]))
+        logging.info("{}weight after training: {}".format(dst_key, self._networks[self._cur_task].convnet.state_dict()[dst_key + "weight"][:5]))
+        logging.info("{}bias after training: {}".format(dst_key, self._networks[self._cur_task].convnet.state_dict()[dst_key + "bias"][:5]))
 
     def _train(self, model, train_loader, test_loader):
         model.to(self._device)
