@@ -3,7 +3,7 @@ import numpy as np
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
-from utils.data import iCIFAR10, iCIFAR100, iImageNet1000, iImageNet100, iTinyImageNet200, iCIFAR100_Wo_Norm
+from utils.data import iCIFAR10, iCIFAR100, iImageNet1000, iImageNet100, iTinyImageNet200, iCIFAR100_Wo_Norm, Skin7, SD_198
 
 
 class DataManager(object):
@@ -187,6 +187,10 @@ def _get_idata(dataset_name):
         return iImageNet100()
     elif name == "tinyimagenet":
         return iTinyImageNet200()
+    elif name == "skin7":
+        return Skin7()
+    elif name == "sd198":
+        return SD_198()
     else:
         raise NotImplementedError('Unknown dataset {}.'.format(dataset_name))
 

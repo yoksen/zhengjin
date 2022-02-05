@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import torch
-
+from sklearn.metrics import confusion_matrix
 
 def count_parameters(model, trainable=False):
     if trainable:
@@ -62,3 +62,11 @@ def split_images_labels(imgs):
         labels.append(item[1])
 
     return np.array(images), np.array(labels)
+
+def calculate_mean_class_recall(y_true, y_pred):
+    """ Calculate the mean class recall for the dataset X """
+    cm = confusion_matrix(y_true, y_pred)
+    right_of_class = np.diag(cm)
+    num_of_class = cm.sum(axis=1)
+    mcr = (right_of_class / num_of_class).mean()
+    return mcr

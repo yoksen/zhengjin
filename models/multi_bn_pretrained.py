@@ -88,6 +88,7 @@ class multi_bn_pretrained(BaseLearner):
         super().__init__(args)
         self._networks = []
         self._convnet_type = args['convnet_type']
+        self._dataset = args["dataset"]
         # assert args['convnet_type'] == "resnet18_cbam", "wrong convnet_type"
         self._seed = args['seed']
         self._task_acc = []
@@ -130,6 +131,8 @@ class multi_bn_pretrained(BaseLearner):
             dst_key = "stage_3.4.bn_b."
         elif self._convnet_type == "resnet18_cbam":
             dst_key = "layer4.1.bn2."
+        elif self._convnet_type == "resnet18":
+            dst_key = "layer4.1.bn2."
 
         if self._cur_task == 0:
             #load pretrained model
@@ -138,10 +141,13 @@ class multi_bn_pretrained(BaseLearner):
             logging.info("{}weight before update: {}".format(dst_key, self._networks[self._cur_task].convnet.state_dict()[dst_key + "weight"][:5]))
             logging.info("{}bias before update: {}".format(dst_key, self._networks[self._cur_task].convnet.state_dict()[dst_key + "bias"][:5]))
 
-            if self._convnet_type == "resnet32":
-                pretrained_dict = torch.load("./saved_parameters/imagenet200_model_32.pth")
-            elif self._convnet_type == "resnet18_cbam":
-                pretrained_dict = torch.load("./saved_parameters/imagenet200_simsiam_pretrained_model.pth")
+            if self._dataset == "sd198":
+                pretrained_dict = torch.load("./saved_parameters/sd198_model_18_224.pth")
+            elif self._dataset == "cifar100":
+                if self._convnet_type == "resnet32":
+                    pretrained_dict = torch.load("./saved_parameters/imagenet200_model_32.pth")
+                elif self._convnet_type == "resnet18_cbam":
+                    pretrained_dict = torch.load("./saved_parameters/imagenet200_simsiam_pretrained_model.pth")
             
             state_dict.update(pretrained_dict)
             self._networks[self._cur_task].convnet.load_state_dict(state_dict)
