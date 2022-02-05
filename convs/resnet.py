@@ -223,6 +223,18 @@ class ResNet(nn.Module):
     def forward(self, x):
         return self._forward_impl(x)
 
+    def is_fc(self, name):
+        if "fc" in name:
+            return True
+        else:
+            return False
+
+    def is_bn(self, name):
+        if "bn" in name:
+            return True
+        else:
+            return False
+
     @property
     def last_conv(self):
         if hasattr(self.layer4[-1], 'conv3'):

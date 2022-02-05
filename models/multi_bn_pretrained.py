@@ -47,41 +47,31 @@ bn_type = "last"
 # bn_type = "first"
 # bn_type = "pretrained"
 
-
-# CIFAR100, ResNet32
-# epochs_init = 70
-# lrate_init = 1e-2
-# milestones_init = [49, 63]
+# Skin40, Resnet18
+# epochs_init = 120
+# epochs_init = 5
+# lrate_init = 1e-4
+# milestones_init = [35, 70, 105]
 # lrate_decay_init = 0.1
-# weight_decay_init = 1e-5
+# weight_decay_init = 5e-4
 
-
-# epochs = 70
-# lrate = 1e-2
-# milestones = [49, 63]
+# epochs = 120
+# epochs = 5
+# lrate = 1e-4
+# milestones = [35, 70, 105]
 # lrate_decay = 0.1
-# weight_decay = 1e-5  # illness
+# weight_decay = 5e-4  # illness
 # optim_type = "adam"
-# batch_size = 128
+# batch_size = 32
+# #temp is used for softmax default 0.1
+# temp = 0.1
+
 
 num_workers = 4
 hyperparameters = ["epochs_init", "lrate_init", "milestones_init", "lrate_decay_init",
                    "weight_decay_init", "epochs","lrate", "milestones", "lrate_decay", 
                    "weight_decay", "batch_size", "num_workers", "optim_type", "class_aug", 
                    "fix_parameter", "bn_type", "temp"]
-
-
-# def is_fc(name):
-#     if "fc" in name:
-#         return True
-#     else:
-#         return False
-
-# def is_bn(name):
-#     if "bn" in name or "downsample.1" in name:
-#         return True
-#     else:
-#         return False
 
 class multi_bn_pretrained(BaseLearner):
     def __init__(self, args):

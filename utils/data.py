@@ -113,11 +113,13 @@ class iImageNet1000(iData):
 class SD_198(iData):
     use_path = True
     train_trsf = [
-        transforms.Resize((224, 224)),
+        transforms.RandomResizedCrop(224),
         transforms.RandomHorizontalFlip(),
+        transforms.ColorJitter(brightness=63/255)
     ]
     test_trsf = [
-        transforms.Resize((224, 224)),
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
     ]
     common_trsf = [
         transforms.ToTensor(),
