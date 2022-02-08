@@ -63,19 +63,19 @@ bn_type = "last"
 # batch_size = 128
 
 # sd198, ResNet18
-epochs_init = 120
+epochs_init = 200
 # epochs_init = 5
 lrate_init = 1e-2
-milestones_init = [35, 70, 105]
+milestones_init = [100, 150]
 lrate_decay_init = 0.1
-weight_decay_init = 5e-4
+weight_decay_init = 1e-5
 
-epochs = 120
+epochs = 200
 # epochs = 5
 lrate = 1e-2
-milestones = [35, 70, 105]
+milestones = [100, 150]
 lrate_decay = 0.1
-weight_decay = 5e-4  # illness
+weight_decay = 1e-5  # illness
 optim_type = "sgd"
 batch_size = 32
 #temp is used for softmax default 0.1
