@@ -3,7 +3,7 @@ from operator import imod
 import torch
 from torch import nn, norm
 from convs.cifar_resnet import resnet32
-from convs.resnet import resnet18, resnet34, resnet50
+from convs.resnet import resnet18, resnet34, resnet50, resnet101
 from convs.ucir_cifar_resnet import resnet32 as cosine_resnet32
 from convs.ucir_resnet import resnet18 as cosine_resnet18
 from convs.ucir_resnet import resnet34 as cosine_resnet34
@@ -27,6 +27,8 @@ def get_convnet(convnet_type, pretrained=False, normed=False):
         return resnet34(pretrained=pretrained)
     elif name == 'resnet50':
         return resnet50(pretrained=pretrained)
+    elif name == 'resnet101':
+        return resnet101(pretrained=pretrained)
     elif name == 'cosine_resnet18':
         return cosine_resnet18(pretrained=pretrained)
     elif name == 'cosine_resnet32':

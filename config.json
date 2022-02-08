@@ -1,14 +1,14 @@
 {
     "prefix": "reproduce",
-    "dataset": "cifar100",
+    "dataset": "sd198",
     "memory_size": 2000,
     "memory_per_class": 20,
     "fixed_memory": true,
     "shuffle": true,
-    "init_cls": 20,
-    "increment": 20,
+    "init_cls": 5,
+    "increment": 5,
     "model_name": "multi_bn",
-    "convnet_type": "resnet18_cbam",
+    "convnet_type": "resnet18",
     "device": ["0"],
     "seed": [32, 40, 50, 60, 100],
     "pretrained":false

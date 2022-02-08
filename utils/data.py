@@ -113,17 +113,19 @@ class iImageNet1000(iData):
 class SD_198(iData):
     use_path = True
     train_trsf = [
-        transforms.RandomResizedCrop(224),
-        transforms.RandomHorizontalFlip(),
-        transforms.ColorJitter(brightness=63/255)
-    ]
+        transforms.RandomResizedCrop(224,scale=(0.3,1.0)),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.ColorJitter(brightness=0.24705882352941178),
+        ]
+    
     test_trsf = [
         transforms.Resize(256),
         transforms.CenterCrop(224),
     ]
+    
     common_trsf = [
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.60298395, 0.4887822, 0.46266827], std=[0.25993535, 0.24081337, 0.24418062]),
+        transforms.Normalize(mean=[0.592, 0.479, 0.451], std=[0.265, 0.245, 0.247]),
     ]
 
     class_order = np.arange(40).tolist()
